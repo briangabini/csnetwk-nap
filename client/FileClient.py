@@ -92,26 +92,6 @@ def forwardToServer(command_prompt):
             
 
         # Send file to server
-        # case '/store':
-        #         if is_connected:
-        #             if len(params) != 1:
-        #                 print('Error: Command parameters do not match or is not allowed.\nUsage: /store <filename>')
-        #             else:
-        #                 file_path = './client/' + params[0] # Store file to server folder
-        #                 print(os.listdir())
-
-        #                 if os.path.exists(params[0]):           # Check if file exists
-        #                     with open(params[0], 'rb') as file:              # 
-        #                         file_content = file.read()              # Read file
-
-        #                         # print(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}))
-        #                         encoded_content = base64.b64encode(file_content).decode()
-        #                         client_socket.send(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}).encode()) 
-        #                 else:
-        #                     print('File does not exist.')
-        #         else:
-        #             print('Error: Please connect to the server first.')
-        
         case '/store':
             if is_connected:
                 if len(params) != 1:
@@ -139,6 +119,35 @@ def forwardToServer(command_prompt):
             else:
                 print('Error: Please connect to the server first.')
 
+        # Fetch a file from a server
+        case '/get':
+            if is_connected:
+                if len(params) != 1:
+                    print('Error: Command parameters do not match or are not allowed.\nUsage: /get <filename>')
+
+                else:
+                    client_socket.send(b'get')            # Signal the server that the client wants to get a file
+
+                    client_socket.send(params[0].encode())  # Send the filename
+
+                    # receive the data
+                    file_size = int(client_socket.recv(BUFFER_SIZE).decode())
+
+                    print(file_size)
+
+                    file_content = recvall(client_socket, file_size)
+
+                    file_path = './' + params[0]
+                    filename = params[0]
+
+                    with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
+                        file.write(file_content)
+
+                    print(f'Server successfully stored {filename} to the client directory.')
+
+
+            else:
+                print('Error: Please connect to the server first.')
 
         # Request directory file list from a server
         case '/dir':
@@ -149,14 +158,6 @@ def forwardToServer(command_prompt):
                     client_socket.send(json.dumps({'command' : 'dir'}).encode())
             else:
                 print('Error: Please connect to the server first.')
-
-        # Fetch a file from a server
-        case '/get':
-            if is_connected:
-
-                pass
-            else:
-                pass
 
         # displays the command help 
         case '/?':
@@ -179,6 +180,15 @@ def help_prompt():
     print('Request directory file list from a server    /dir')
     print('Fetch a file from a server                   /get <filename>')
     print('Fetch a file from a server                   /get <filename>')
+
+def recvall(sock, size):
+    data = b""
+    while len(data) < size:
+        packet = sock.recv(size - len(data))
+        if not packet:
+            break
+        data += packet
+    return data
     
 
 # loops while the client is running to send commands to server until the client is running

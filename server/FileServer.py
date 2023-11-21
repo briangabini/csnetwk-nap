@@ -7,7 +7,6 @@ import json
 import base64
 
 BUFFER_SIZE = 1024 
-file_content = b''
 
 # signal the thread to exit
 exit_flag = False
@@ -18,20 +17,18 @@ disconnected_clients = []
 # TODO: make a function that processes the commands from the client/s
 def processCommandsFromClients(command_prompt, client_socket, client_address):
 
+    # execute this block when the command_prompt value is a json object
     try:
-        data = json.loads(command_prompt.decode())
-        command = data['command']
-    except Exception as e:
-        # command = client_socket.recv(BUFFER_SIZE)
+        data = json.loads(command_prompt.decode())      # deserialize string to python <dict>
+        command = data['command']                       # assign the command 
+
+    # execute this block when the command_prompt value is a <dict>
+    except:
         command = command_prompt['command']
-        # command = command_prompt.decode()
-        print('Command: ' + command)
+        # print('Command: ' + command)
         # print('Next: ', client_socket.recv(BUFFER_SIZE).decode())
 
     # print(data)
-
-    """ if not data:
-        command = client_socket.recv(BUFFER_SIZE) """
 
     match command:
         case 'leave':
@@ -72,76 +69,48 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             print(dir)
 
             # send the dir to client using client_socket.send()
-        # case 'store':
-        #     # TODO: Avoid duplicates when storing
-        #     filename = data['filename']             # Get filename
-        #     file_path = './server/' + filename      # Store file to server folder
-        #     file = data['file']                     # Get the contents of the file
-
-        #     # file_bytes = file.encode()
-        #     received_image = base64.b64decode(file.encode())
-
-        #     # f = open(file_path,"w+")                # Create a file     
-        #     # f.write(received_image)                 # Overwrite the contents
-
-        #     with open(file_path, 'wb') as file:
-        #             file.write(received_image)
-        #     print(f'{client_address} successfully stored {filename} to the server.')
         case 'store':
-            # TODO: Avoid duplicates when storing
-            # filename = data['filename']  # Get filename
-            # filename = client_socket.recv(BUFFER_SIZE)
             filename = command_prompt['filename']
-            file_path = './' + filename  # Store file to server folder
+            file_path = './' + filename                              # Store file to server folder
 
             print('Filename: ', filename)
 
-            global file_content
+            file_content = command_prompt['file_content']            # get the content of a file in <bytes>
 
             # Get the file content
-            # file_content = command_prompt['file_content']
-            local_file_content = file_content
-
             print('Type of file_content: ', type(file_content))
 
-            with open(file_path, 'wb') as file:
+            with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
                 file.write(file_content)
 
             print(f'{client_address} successfully stored {filename} to the server.')
 
         case 'get':
-            pass
+            filename = command_prompt['filename']
+
+            file_path = './' + filename
+
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as file:
+                    file_content = file.read()
+
+                    client_socket.send(str(len(file_content)).encode())     # send the file length
+
+                    print(len(file_content))
+
+                    print('Type of file_content: ', type(file_content))
+
+                    # print('file_content: ', file_content)
+
+                    client_socket.sendall(file_content) 
+            
+            else:
+                print('Error: File does not exist.')
 
 def handle_client(client_socket, client_address):
     print(f"Connection established with{client_address}")
 
     global exit_flag
-    global file_content
-
-    # Wait for commands from the client
-    # while not exit_flag: 
-    #     try: 
-    #         command_prompt = client_socket.recv(BUFFER_SIZE)
-
-    #         # break the loop if no data is received
-    #         if not command_prompt:
-    #             break
-
-    #         if command_prompt.decode() == 'store':
-    #             # assign command_prompt with as an object containing
-    #             """ 
-    #             {
-    #                command: 'store',
-    #                filename: client_socket.recv(BUFFER_SIZE).encode(),
-    #                file_content: client_socket.recv(BUFFER_SIZE)
-    #             } 
-    #             """
-
-    #         processCommandsFromClients(command_prompt, client_socket, client_address) # Process the command
-        
-    #     except Exception as e:
-    #         print(f'Error handling client. {e}')
-    #         break
 
     while not exit_flag: 
         try: 
@@ -171,10 +140,22 @@ def handle_client(client_socket, client_address):
                 command_data = {
                     'command': 'store',
                     'filename': filename,
-                    # 'file_content': file_content  # Assuming file_content is a string
+                    'file_content': file_content  # Assuming file_content is a string
                 }
 
                 # Process the 'store' command with the constructed data
+                processCommandsFromClients(command_data, client_socket, client_address)
+
+            elif decoded_command == 'get':
+                # Receive the additional data for the 'get' command
+                filename = client_socket.recv(BUFFER_SIZE).decode()
+
+                # Construct a JSON-like object
+                command_data = {
+                    'command': 'get',
+                    'filename': filename,
+                }      
+
                 processCommandsFromClients(command_data, client_socket, client_address)
 
             else:
