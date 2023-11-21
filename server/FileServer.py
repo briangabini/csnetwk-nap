@@ -4,26 +4,73 @@ import os
 import time
 import threading
 import json
+import base64
 
 BUFFER_SIZE = 1024 
 
 # signal the thread to exit
 exit_flag = False
 
+connected_clients = []                 
+disconnected_clients = []
+
 # TODO: make a function that processes the commands from the client/s
 def processCommandsFromClients(command_prompt, client_socket, client_address):
     data = json.loads(command_prompt.decode())
+    data2 = json.loads(command_prompt)
     command = data['command']
 
     match command:
         case 'leave':
-            client_socket.shutdown(SHUT_WR)
             client_socket.close()
-            print('The client disconnected.\n')
+            print(f'The client {client_address[1]} disconnected.\n')
             global exit_flag 
             exit_flag = True
+        case 'register':
+            handle = data['handle']
 
+            filtered_clients = list(filter(lambda client: client['name'] == handle, connected_clients))
 
+            if filtered_clients:             # check if null 
+                print(f'User {handle} already exists.')
+            else:
+                filtered_clients = list(filter(lambda client: client['address'] == client_address, connected_clients))
+
+                if filtered_clients:
+                    client = filtered_clients[0]
+                    client['name'] = handle
+
+                    print(f'Successfully registered User {handle}')
+
+                else:
+                    print(f'User doesn\'t exist.')
+        case 'dir':
+
+            # Get all files from current directory
+            dir = os.listdir("./server") # Might need to change this
+            os.chdir(os.getcwd()) # Back to original dir
+
+            # Remove FileServer.py from list
+            dir.remove('FileServer.py')
+
+            print('Directory: ', end='')
+            print(dir)
+
+            # send the dir to client using client_socket.send()
+        case 'store':
+            # TODO: Avoid duplicates when storing
+            filename = data['filename']             # Get filename
+            file_path = './server/' + filename      # Store file to server folder
+            file = data['file']                     # Get the contents of the file
+
+            # file_bytes = file.encode()
+            received_image = base64.b64decode(file.encode())
+
+            f = open(file_path,"w+")                # Create a file     
+            f.write(received_image)                     # Overwrite the contents
+            print(f'{client_address} successfully stored {filename} to the server.')
+        case 'get':
+            pass
 
 def handle_client(client_socket, client_address):
     print(f"Connection established with{client_address}")
@@ -42,7 +89,7 @@ def handle_client(client_socket, client_address):
             processCommandsFromClients(command_prompt, client_socket, client_address) # Process the command
         
         except Exception as e:
-            print(f'Error handling client.{e}')
+            print(f'Error handling client. {e}')
             break
 
         
@@ -53,8 +100,10 @@ server_socket = socket(AF_INET, SOCK_STREAM)
 while True:
     print("FIle Transfer TCP Server")
     try:
-        ip = input("Enter IP: ")                    # user inputs IP Address for the server to bind
-        port = input("Enter Port: ")                # user inputs the Port Number for the server to bind
+        # ip = input("Enter IP: ")                    # user inputs IP Address for the server to bind
+        # port = input("Enter Port: ")                # user inputs the Port Number for the server to bind\
+        ip = "127.0.0.1"
+        port = "4000"
         server_socket.bind((ip, int(port)))         # Bind the socket to a specific IP address and port
         server_socket.listen(1)                     # sets the maximum ammount of connections allowed 
         print(f"Server running at {ip}:{port}")
@@ -64,8 +113,7 @@ while True:
         os.system('cls')
         print(f"Error: {str(e)}\nTry again\n")
 
-connected_clients = []                 
-disconnected_clients = []
+
 
 try:      
     # Accept incoming connections  

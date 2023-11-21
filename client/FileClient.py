@@ -2,12 +2,18 @@ from socket import *
 import threading # aralin pa to
 import json
 import time
+import os
+import base64
 
 BUFFER_SIZE = 1024
 is_connected = False # initialize the connection status of the client to False
 
+# function to create a new socket
+def create_client_socket():
+    return socket(AF_INET, SOCK_STREAM)
+
 # Create client socket
-client_socket = socket(AF_INET, SOCK_STREAM)
+client_socket = create_client_socket()
 
 def forwardToServer(command_prompt):
     """ Forwards the command of the user to the server via sockets.
@@ -41,46 +47,88 @@ def forwardToServer(command_prompt):
             
 
             # check first if the client is already connected to the server
-            # if not is_connected:    
-            if len(params) == 2:                    # check if there are params
-                server_address = (params[0], int(params[1])) # assign the address with the params 
+            if not is_connected:    
+                if len(params) == 2:                    # check if there are params
+                    server_address = (params[0], int(params[1])) # assign the address with the params 
 
-                try: 
-                    client_socket.connect(server_address)
-                    print('Connection to the File Exchange Server is successful!')
+                    try: 
+                        client_socket = create_client_socket()
 
-                    client_socket.send(json.dumps({'command': 'join'}).encode())
+                        client_socket.connect(server_address)
+                        print('Connection to the File Exchange Server is successful!')
 
-                except Exception as e:
-                    print('Connection unsuccessful: ' + e)
+                        client_socket.send(json.dumps({'command': 'join'}).encode())
 
+                        is_connected = True
+
+                    except Exception as e:
+                        print(f'Connection unsuccessful: {e}')
+
+                else:
+                    print('Error: Command parameters do not match or is not allowed.\nType /? for help.')
             else:
-                print('Error: Command parameters do not match or is not allowed.\nType /? for help.')
-
-            """ else:
-                print('Client is already connected. Use /leave to disconnect from the server.') """
+                print('Client is already connected. Use /leave to disconnect from the server.')
 
         # Disconnect to the server application
         case '/leave':
-            client_socket.send(json.dumps({'command': 'leave'}).encode())
-            client_socket.shutdown(SHUT_WR)
-            client_socket.close()
+            if is_connected:
+                if len(params) != 0:
+                    print('Error: Command parameters do not match or is not allowed.\nUsage: /leave')
+                else:
+                    client_socket.send(json.dumps({'command': 'leave'}).encode())
+                    client_socket.close()
+            else:
+                print('Error. Please connect to the server first.')
 
         # Register a unique handle or alias
         case '/register':
-            pass
+            if is_connected:
+                if len(params) != 1:
+                    print('Error: Command parameters do not match or is not allowed.\nUsage: /register <handle>')
+                else:
+                    client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())
+            else:
+                print('Error: Please connect to the server first.')
+            
 
         # Send file to server
         case '/store':
-            pass
+            if is_connected:
+                if len(params) != 1:
+                    print('Error: Command parameters do not match or is not allowed.\nUsage: /store <filename>')
+                else:
+                    file_path = './client/' + params[0] # Store file to server folder
+                    print(os.listdir())
+
+                    if os.path.exists(params[0]):           # Check if file exists
+                        with open(params[0], 'rb') as file:              # 
+                            file_content = file.read()              # Read file
+
+                            # print(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}))
+                            encoded_content = base64.b64encode(file_content).decode()
+                            client_socket.send(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}).encode()) 
+                    else:
+                        print('File does not exist.')
+            else:
+                print('Error: Please connect to the server first.')
 
         # Request directory file list from a server
         case '/dir':
-            pass
+            if is_connected:
+                if len(params) != 0:
+                    print('Error: Command parameters do not match or is not allowed.\nUsage: /dir')
+                else:
+                    client_socket.send(json.dumps({'command' : 'dir'}).encode())
+            else:
+                print('Error: Please connect to the server first.')
 
         # Fetch a file from a server
         case '/get':
-            pass
+            if is_connected:
+
+                pass
+            else:
+                pass
 
         # displays the command help 
         case '/?':
