@@ -92,25 +92,53 @@ def forwardToServer(command_prompt):
             
 
         # Send file to server
+        # case '/store':
+        #         if is_connected:
+        #             if len(params) != 1:
+        #                 print('Error: Command parameters do not match or is not allowed.\nUsage: /store <filename>')
+        #             else:
+        #                 file_path = './client/' + params[0] # Store file to server folder
+        #                 print(os.listdir())
+
+        #                 if os.path.exists(params[0]):           # Check if file exists
+        #                     with open(params[0], 'rb') as file:              # 
+        #                         file_content = file.read()              # Read file
+
+        #                         # print(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}))
+        #                         encoded_content = base64.b64encode(file_content).decode()
+        #                         client_socket.send(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}).encode()) 
+        #                 else:
+        #                     print('File does not exist.')
+        #         else:
+        #             print('Error: Please connect to the server first.')
+        
         case '/store':
             if is_connected:
                 if len(params) != 1:
-                    print('Error: Command parameters do not match or is not allowed.\nUsage: /store <filename>')
+                    print('Error: Command parameters do not match or are not allowed.\nUsage: /store <filename>')
                 else:
-                    file_path = './client/' + params[0] # Store file to server folder
-                    print(os.listdir())
+                    file_path = './' + params[0]  # Store file to server folder
 
-                    if os.path.exists(params[0]):           # Check if file exists
-                        with open(params[0], 'rb') as file:              # 
-                            file_content = file.read()              # Read file
+                    if os.path.exists(file_path):
+                        with open(file_path, 'rb') as file:
+                            file_content = file.read()
 
-                            # print(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}))
-                            encoded_content = base64.b64encode(file_content).decode()
-                            client_socket.send(json.dumps({'command': 'store', 'filename': params[0], 'file': encoded_content}).encode()) 
+                            client_socket.send(b'store')            # Signal the server that the client wants to store a file
+                            client_socket.send(params[0].encode())  # Send the filename
+
+                            # Send the file content
+                            print('Length of file: ', len(file_content))
+
+                            client_socket.send(str(len(file_content)).encode())
+
+                            client_socket.sendall(file_content)     
+                            
+                        print(f'{params[0]} successfully sent to the server.')
                     else:
-                        print('File does not exist.')
+                        print('Error: File does not exist.')
             else:
                 print('Error: Please connect to the server first.')
+
 
         # Request directory file list from a server
         case '/dir':
@@ -151,6 +179,7 @@ def help_prompt():
     print('Request directory file list from a server    /dir')
     print('Fetch a file from a server                   /get <filename>')
     print('Fetch a file from a server                   /get <filename>')
+    
 
 # loops while the client is running to send commands to server until the client is running
 while True: 
