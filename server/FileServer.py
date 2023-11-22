@@ -25,10 +25,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
     # execute this block when the command_prompt value is a <dict>
     except:
         command = command_prompt['command']
-        # print('Command: ' + command)
-        # print('Next: ', client_socket.recv(BUFFER_SIZE).decode())
 
-    # print(data)
 
     match command:
         case 'leave':
@@ -66,7 +63,8 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             dir.remove('FileServer.py')
 
             print('Directory: ', end='')
-            print(dir)
+            
+            client_socket.send(str(dir).encode('utf-8'))
 
             # send the dir to client using client_socket.send()
         case 'store':
@@ -78,7 +76,9 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             file_content = command_prompt['file_content']            # get the content of a file in <bytes>
 
             # Get the file content
-            print('Type of file_content: ', type(file_content))
+            print(file_content)
+
+            # print('Type of file_content: ', type(file_content))
 
             with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
                 file.write(file_content)
@@ -97,6 +97,8 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                     client_socket.send(str(len(file_content)).encode())     # send the file length
 
                     print(len(file_content))
+
+                    time.sleep(0.1)
 
                     print('Type of file_content: ', type(file_content))
 
@@ -134,7 +136,7 @@ def handle_client(client_socket, client_address):
 
                 file_content = recvall(client_socket, file_size)
 
-                print('Length of file: ', len(file_content))
+                print('Length of file: ', file_size)
 
                 # Construct a JSON-like object
                 command_data = {

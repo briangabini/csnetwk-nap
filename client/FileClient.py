@@ -59,6 +59,10 @@ def forwardToServer(command_prompt):
 
                         client_socket.send(json.dumps({'command': 'join'}).encode())
 
+                        server_response = client_socket.recv(BUFFER_SIZE).decode()
+
+                        print(f'Server: {server_response}')
+
                         is_connected = True
 
                     except Exception as e:
@@ -104,8 +108,12 @@ def forwardToServer(command_prompt):
                             file_content = file.read()
 
                             client_socket.send(b'store')            # Signal the server that the client wants to store a file
+
+                            time.sleep(0.1)
+
                             client_socket.send(params[0].encode())  # Send the filename
 
+                            time.sleep(0.1)
                             # Send the file content
                             print('Length of file: ', len(file_content))
 
@@ -156,6 +164,10 @@ def forwardToServer(command_prompt):
                     print('Error: Command parameters do not match or is not allowed.\nUsage: /dir')
                 else:
                     client_socket.send(json.dumps({'command' : 'dir'}).encode())
+
+                    server_response = client_socket.recv(BUFFER_SIZE).decode()
+
+                    print(f'Server: {server_response}')
             else:
                 print('Error: Please connect to the server first.')
 
