@@ -143,7 +143,7 @@ def forwardToServer(command_prompt):
 
                             send_file(client_socket, file_content)
                             
-                        print(f'{params[0]} successfully sent to the server.')
+                            print(f'{params[0]} successfully sent to the server.')
                         
                         else:
                             print('Error: File does not exist.')
