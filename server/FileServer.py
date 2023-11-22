@@ -69,7 +69,13 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             # send the dir to client using client_socket.send()
         case 'store':
             filename = command_prompt['filename']
-            file_path = './' + filename                              # Store file to server folder
+                                      # Store file to server folder
+
+            # Check if file with same file name already exists in server directory
+            server_dir = os.listdir("./")
+            filename = get_unique_filename(filename, server_dir)
+
+            file_path = './' + filename    
 
             print('Filename: ', filename)
 
@@ -108,6 +114,17 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             
             else:
                 print('Error: File does not exist.')
+
+def get_unique_filename(file_name, server_dir):
+    base, ext = os.path.splitext(file_name)
+    counter = 1
+    new_file_name = file_name
+
+    while new_file_name in server_dir:
+        new_file_name = f"{base}({counter}){ext}"
+        counter += 1
+
+    return new_file_name
 
 def handle_client(client_socket, client_address):
     print(f"Connection established with{client_address}")

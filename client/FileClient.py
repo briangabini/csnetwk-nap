@@ -57,11 +57,11 @@ def forwardToServer(command_prompt):
                         client_socket.connect(server_address)
                         print('Connection to the File Exchange Server is successful!')
 
-                        client_socket.send(json.dumps({'command': 'join'}).encode())
+                        # client_socket.send(json.dumps({'command': 'join'}).encode())
 
-                        server_response = client_socket.recv(BUFFER_SIZE).decode()
+                        # server_response = client_socket.recv(BUFFER_SIZE).decode()
 
-                        print(f'Server: {server_response}')
+                        # print(f'Server: {server_response}')
 
                         is_connected = True
 
@@ -145,8 +145,13 @@ def forwardToServer(command_prompt):
 
                     file_content = recvall(client_socket, file_size)
 
-                    file_path = './' + params[0]
+                    
                     filename = params[0]
+
+                     # Check if file with same file name already exists in server directory
+                    server_dir = os.listdir("./")
+                    filename = get_unique_filename(filename, server_dir)
+                    file_path = './' + filename
 
                     with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
                         file.write(file_content)
@@ -201,7 +206,18 @@ def recvall(sock, size):
             break
         data += packet
     return data
-    
+
+def get_unique_filename(file_name, server_dir):
+    base, ext = os.path.splitext(file_name)
+    counter = 1
+    new_file_name = file_name
+
+    while new_file_name in server_dir:
+        new_file_name = f"{base}({counter}){ext}"
+        counter += 1
+
+    return new_file_name
+
 
 # loops while the client is running to send commands to server until the client is running
 while True: 
