@@ -1,72 +1,119 @@
 from socket import *
-import sys
 import os
 import time
 import threading
 import json
-import base64
 
-BUFFER_SIZE = 1024 
+BUFFER_SIZE = 1024              # initialize buffer size
+exit_flag = False               # signal the thread to exit
+connected_clients = []          # store the connected clients 
+# disconnected_clients = []
 
-# signal the thread to exit
-exit_flag = False
-
-connected_clients = []                 
-disconnected_clients = []
-
-# TODO: make a function that processes the commands from the client/s
 def processCommandsFromClients(command_prompt, client_socket, client_address):
+    """ This method executes the appropriate functions of the server based on the query from client/s
+
+    PARAMETERS
+    ----------
+    command_prompt : str
+        command entered by the user 
+    client_socket: socket
+        socket endpoint connected to the client
+    client_address: _RetAddress
+        address of the client in the form of (ip, port)
+    """
 
     # execute this block when the command_prompt value is a json object
     try:
-        data = json.loads(command_prompt.decode())      # deserialize string to python <dict>
-        command = data['command']                       # assign the command 
+
+        # deserialize string to python <dict>
+        data = json.loads(command_prompt.decode())      
+
+        # assign the command
+        command = data['command']                        
 
     # execute this block when the command_prompt value is a <dict>
     except:
         command = command_prompt['command']
 
-
+    # check if the command exists in the list of cases
     match command:
+
+        # Close the connection in the server side
         case 'leave':
+
+            # Close the socket connected to the client
             client_socket.close()
+
+            # Print to terminal the disconnection message
             print(f'The client {client_address[1]} disconnected.\n')
+
+            # access the global var 'exit_flag' and assign True
             global exit_flag 
             exit_flag = True
 
+        # Register the client to the server by appending to the array of connected clients
         case 'register':
+
+            # assign the handle name 
             handle = data['handle']
 
+            # get the client from the connected_clients list based on the 'name' property
             filtered_clients = list(filter(lambda client: client['name'] == handle, connected_clients))
 
-            if filtered_clients:             # check if null 
+            # check if the client is already registered
+            if filtered_clients:             
+
+                # print the mesasge 
                 print(f'User {handle} already exists.')
+
             else:
+                # get the client from the connected_clients list based on the 'address' property
                 filtered_clients = list(filter(lambda client: client['address'] == client_address, connected_clients))
 
+                # check if the client is already connected
                 if filtered_clients:
-                    client = filtered_clients[0]
-                    client['name'] = handle
 
-                    print(f'Successfully registered User {handle}')
+                    # access the client's data
+                    client = filtered_clients[0]
+
+                    # assign the client's handle name to the client's existing data in the connected_clients list
+                    client['name'] = handle
+ 
+                    # initialize a response 
+                    response = f'Successfully registered User {handle}'
+
+                    # send a response to the client by using a json object that contains the status and the message 
+                    client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
 
                 else:
+                    # print the message
                     print(f'User doesn\'t exist.')
 
+        # Send the filenames of files in the server directory to the client
         case 'dir':
 
             # Get all files from current directory
-            dir = os.listdir("./") # Might need to change this
-            os.chdir(os.getcwd()) # Back to original dir
+            dir_list = os.listdir("./")
+
+            # Back to original dir 
+            os.chdir(os.getcwd()) 
 
             # Remove FileServer.py from list
-            dir.remove('FileServer.py')
+            dir_list.remove('FileServer.py')
 
-            print('Directory: ', end='')
+            # initialize 'directory' which will be assigned with the dir_list
+            directory = 'Directory: \n'
+
+            # iterate through the dir_list and assign the filenames to 'directory'
+            for file in dir_list:
+                directory += f'- {file}\n'
             
-            client_socket.send(str(dir).encode('utf-8'))
+            # assign the message 
+            message = 'Successfully retrieved file list in directory.'
 
-            # send the dir to client using client_socket.send()
+            # send the server reponse in json object notation that contains the status, message, and directory
+            client_socket.send(json.dumps({'status': 'OK', 'message': message, 'directory': directory}).encode())
+
         case 'store':
             filename = command_prompt['filename']
                                       # Store file to server folder
@@ -127,33 +174,46 @@ def get_unique_filename(file_name, server_dir):
     return new_file_name
 
 def handle_client(client_socket, client_address):
+    """ This method handles the queries sent by the client
+
+    PARAMETERS
+    ----------
+    client_socket: socket
+        socket endpoint connected to the client
+    client_address: _RetAddress
+        address of the client in the form of (ip, port)
+    """
+
+    # print to terminal 
     print(f"Connection established with{client_address}")
 
-    global exit_flag
+    global exit_flag        # refer to the global variable 
 
+    # loop until exit_flag is False
     while not exit_flag: 
         try: 
+
+            # get the queries from the client 
             command_prompt = client_socket.recv(BUFFER_SIZE)
 
             # break the loop if no data is received
             if not command_prompt:
                 break
 
+            # get the command from the query
             decoded_command = command_prompt.decode()
 
-            print('Decoded command: ', decoded_command)
-
+            # check if the command is 'store'
             if decoded_command == 'store':
-                # Receive additional data for the 'store' command
+
+                # get the filename from the client                
                 filename = client_socket.recv(BUFFER_SIZE).decode()
 
-                print(filename)
-
+                # get the file size from the client
                 file_size = int(client_socket.recv(BUFFER_SIZE).decode())
 
+                # get the content of the file from the client
                 file_content = recvall(client_socket, file_size)
-
-                print('Length of file: ', file_size)
 
                 # Construct a JSON-like object
                 command_data = {
@@ -165,8 +225,10 @@ def handle_client(client_socket, client_address):
                 # Process the 'store' command with the constructed data
                 processCommandsFromClients(command_data, client_socket, client_address)
 
+            # check if the command is 'get'
             elif decoded_command == 'get':
-                # Receive the additional data for the 'get' command
+
+                # get the filename from the client                
                 filename = client_socket.recv(BUFFER_SIZE).decode()
 
                 # Construct a JSON-like object
@@ -187,6 +249,15 @@ def handle_client(client_socket, client_address):
 
 """ OTHER FUNCTIONS """
 def recvall(sock, size):
+    """ This method executes the appropriate functions of the server based on the query from client/s
+
+    PARAMETERS
+    ----------
+    sock: socket
+        socket endpoint connected to the client
+    size: int
+        total size of the file being retrieved.
+    """
     bytes_read = 0  # Keep track of the number of bytes read
     data = b"" # Stores the data being received
 
@@ -214,18 +285,25 @@ server_socket = socket(AF_INET, SOCK_STREAM)
 
 # Loops until a successful server is started
 while True:
+
+    # print to terminal 
     print("FIle Transfer TCP Server")
+
     try:
         # ip = input("Enter IP: ")                  # user inputs IP Address for the server to bind
         # port = input("Enter Port: ")              # user inputs the Port Number for the server to bind\
-        ip = "127.0.0.1"
-        port = "4000"
+        ip = "127.0.0.1"                            # hard coded for now
+        port = "4000"                               # hard coded for now
         server_socket.bind((ip, int(port)))         # Bind the socket to a specific IP address and port
         server_socket.listen(1)                     # sets the maximum ammount of connections allowed 
+
+        # print to terminal 
         print(f"Server running at {ip}:{port}")     
         break
 
     except Exception as e:
+
+        # clear the terminal if there's an exception
         os.system('cls')
         print(f"Error: {str(e)}\nTry again\n")
 
@@ -234,17 +312,31 @@ while True:
 try:      
     # Accept incoming connections  
     while True:
-        print("Waiting for a connection...")
-        client_socket, client_address = server_socket.accept()      # accept the connection from incoming clients
 
-        # call some functions here
+        # print to terminal
+        print("Waiting for a connection...")
+
+        # accept the connection from incoming clients
+        client_socket, client_address = server_socket.accept()      
+
+        # response of the server to the client
+        response = "Connection established to server." 
+
+        # send the response to the client after connecting
+        client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+
         # Create a new thread for each client
         # this allows multiple tasks to run concurrently, in this case, handling multiple clients
         client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
         client_thread.start()
 
-        # Add user to list of connected clients
+        # test what will happen if we don't use threads
+        # handle_client(client_socket, client_address) # only one client at a time is possible since, multiple clients will share 
+
+        # initialize a new user 
         new_user = {'address' : client_address, 'socket': client_socket, 'name': ""}
+
+        # Add user to list of connected clients
         connected_clients.append(new_user)
 
         
