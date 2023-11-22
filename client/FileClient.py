@@ -119,9 +119,10 @@ def forwardToServer(command_prompt):
 
                             client_socket.send(str(len(file_content)).encode())
 
-                            client_socket.sendall(file_content)     
+                            send_file(client_socket, file_content)
                             
                         print(f'{params[0]} successfully sent to the server.')
+                        
                     else:
                         print('Error: File does not exist.')
             else:
@@ -199,13 +200,27 @@ def help_prompt():
     print('Fetch a file from a server                   /get <filename>')
 
 def recvall(sock, size):
-    data = b""
-    while len(data) < size:
-        packet = sock.recv(size - len(data))
-        if not packet:
-            break
-        data += packet
+    bytes_read = 0  # Keep track of the number of bytes read
+    data = b"" # Stores the data being received
+
+    # Loop until there are no more bytes left to read
+    while bytes_read < size:
+        packet = client_socket.recv(BUFFER_SIZE)  # Read data from the sender
+        time.sleep(0.01)
+        data += packet # Store data 
+        bytes_read = len(data)  # Get the number of bytes read so far
+
     return data
+
+def send_file(socket, file_content):
+    file_position = 0
+    while file_position < len(file_content):
+        remaining_bytes = min(BUFFER_SIZE, len(file_content) - file_position)
+        # Send a part of data to client
+        socket.send(file_content[file_position:file_position + remaining_bytes])
+        time.sleep(0.01)
+        # Update file position
+        file_position += remaining_bytes
 
 def get_unique_filename(file_name, server_dir):
     base, ext = os.path.splitext(file_name)
