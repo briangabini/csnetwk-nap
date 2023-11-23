@@ -5,7 +5,7 @@ import threading
 import json
 
 BUFFER_SIZE = 1024              # initialize buffer size
-exit_flag = False               # signal the thread to exit
+#exit_flag = False               # signal the thread to exit
 connected_clients = []          # store the connected clients 
 # disconnected_clients = []
 
@@ -24,31 +24,41 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
     # execute this block when the command_prompt value is a json object
     try:
-
+        
         # deserialize string to python <dict>
         data = json.loads(command_prompt.decode())      
 
         # assign the command
-        command = data['command']                        
+        command = data['command']   
+        #print(command)         # for debugging remove this             
 
     # execute this block when the command_prompt value is a <dict>
     except:
         command = command_prompt['command']
+        #print(command) # for debugging remove this
 
     # check if the command exists in the list of cases
     match command:
-
+        
         # Close the connection in the server side
         case 'leave':
-
             # Close the socket connected to the client
+            print(f'The client {client_address} disconnected.\n')
             client_socket.close()
 
             # Print to terminal the disconnection message
-            print(f'The client {client_address[1]} disconnected.\n')
+            
+            
+            #print(connected_clients) # for debugging remove this
+            # Remove the disconnected client from the connected_clients list
+            disconnected_client = next((client for client in connected_clients if client['address'] == client_address), None)
+            if disconnected_client:
+                connected_clients.remove(disconnected_client)
 
-            # access the global var 'exit_flag' and assign True
-            global exit_flag 
+            #print(connected_clients) # for debugging remove this
+
+            # Access the global var 'exit_flag' and assign True
+            global exit_flag
             exit_flag = True
 
         # Register the client to the server by appending to the array of connected clients
@@ -65,6 +75,8 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
                 # print the mesasge 
                 print(f'User {handle} already exists.')
+                response = f'User {handle} already exists. Choose a different handle.'
+                client_socket.send(json.dumps({'status': 'NO', 'message': response}).encode())
 
             else:
                 # get the client from the connected_clients list based on the 'address' property
@@ -183,11 +195,11 @@ def handle_client(client_socket, client_address):
     client_address: _RetAddress
         address of the client in the form of (ip, port)
     """
-
-    # print to terminal 
-    print(f"Connection established with{client_address}")
-
     global exit_flag        # refer to the global variable 
+    # print to terminal 
+    print(f"Connection established with {client_address}")
+    exit_flag = False
+    
 
     # loop until exit_flag is False
     while not exit_flag: 

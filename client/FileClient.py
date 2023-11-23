@@ -65,6 +65,7 @@ def forwardToServer(command_prompt):
                         if server_response['status'] == 'OK':
                             # assign the 'is_connected' var with True
                             is_connected = True
+                            print(f'is_connected is now: {is_connected}')
 
                     except Exception as e:
                         print(f'Connection unsuccessful: {e}')
@@ -73,7 +74,7 @@ def forwardToServer(command_prompt):
                     print('Error: Command parameters do not match or is not allowed.\nType /? for help.')
             else:
                 print('Client is already connected. Use /leave to disconnect from the server.')
-
+            
         # Disconnect to the server application
         case '/leave':
 
@@ -86,10 +87,12 @@ def forwardToServer(command_prompt):
                     print('Error: Command parameters do not match or is not allowed.\nUsage: /leave')
 
                 else:
-
                     # send a json object that contains the command of the user 
                     client_socket.send(json.dumps({'command': 'leave'}).encode())
                     client_socket.close()
+                    is_connected = False
+                    is_registered = False
+                    print(f'is_connected is now: {is_connected}')
             else:
                 print('Error. Please connect to the server first.')
 
@@ -101,14 +104,15 @@ def forwardToServer(command_prompt):
                         print('Error: Command parameters do not match or is not allowed.\nUsage: /register <handle>')
                     else:
                         client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())
-
+                        #print("sending message") #this is for debugging remove this
                         server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode()) # get the response of the server in json format
-
+                        #print("getting server_response") #this is for debugging remove this
                         print(server_response['message'])
 
                         if server_response['status'] == 'OK':
                             is_registered = True
-
+                        else:
+                            is_registered = False
                 else:
                     # print to terminal
                     print('You can only register once.')
@@ -142,8 +146,7 @@ def forwardToServer(command_prompt):
                                 print('Length of file: ', len(file_content))
 
                             send_file(client_socket, file_content)
-                            
-                        print(f'{params[0]} successfully sent to the server.')
+                            print(f'{params[0]} successfully sent to the server.')
                         
                         else:
                             print('Error: File does not exist.')
@@ -265,7 +268,7 @@ def recvall(sock, size):
         
     while bytes_read < size:
         packet = sock.recv(BUFFER_SIZE)  # Read data from the sender
-        time.sleep(0.01)
+        time.sleep(0.1)
         data += packet # Store data 
         bytes_read = len(data)  # Get the number of bytes read so far
 
