@@ -10,16 +10,20 @@ connected_clients = []          # store the connected clients
 disconnected_clients = []           
 
 def processCommandsFromClients(command_prompt, client_socket, client_address):
-    """ This method executes the appropriate functions of the server based on the query from client/s
+    """Execute server commands based on client queries.
 
-    PARAMETERS
-    ----------
-    command_prompt : str
-        command entered by the user 
-    client_socket: socket
-        socket endpoint connected to the client
-    client_address: _RetAddress
-        address of the client in the form of (ip, port)
+    This function interprets client commands and performs corresponding actions on the server.
+
+    Parameters:
+        command_prompt (bytes or object): The command entered by the client. It can be either a JSON-formatted string or a javascript object.
+        client_socket (socket): The socket endpoint connected to the client.
+        client_address (tuple): The address of the client in the form of (ip, port).
+
+    Raises:
+        JSONDecodeError: If the command_prompt is a string but cannot be decoded as a JSON object.
+
+    Example:
+        processCommandsFromClients('{"command": "leave"}', client_socket_instance, ('127.0.0.1', 12345))
     """
 
     # execute this block when the command_prompt value is a json object
@@ -113,8 +117,8 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                     print(f'User doesn\'t exist.')
         
             # DEBUG
-            print(f'connected: {connected_clients}')
-            print(f'disconnected: {disconnected_clients}')
+            # print(f'connected: {connected_clients}')
+            # print(f'disconnected: {disconnected_clients}')
 
         # Send the filenames of files in the server directory to the client
         case 'dir':
@@ -157,17 +161,28 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             # print to terminal 
             print('Filename: ', filename)
 
-            # get the content of a file in <bytes>
-            file_content = command_prompt['file_content']           
+            # get the file size from the client
+            file_size = int(client_socket.recv(BUFFER_SIZE).decode())
+
+            # get the content of the file from the client
+            file_content = recvall(client_socket, file_size)          
 
             # Get the file content
-            print(file_content)
+            # print(file_content)
 
             with open(file_path, 'wb') as file:                      
                 # write the file_content to the newly created file
                 file.write(file_content)
 
-            print(f'{client_address} successfully stored {filename} to the server.')
+            response = f'Successfully stored {filename}.'
+
+            client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+
+            log_message = f'{client_address} successfully stored {filename} to the server.'
+
+            print(f'Log: {log_message}')
+
+            # broadcast_to_all(client_address, 'Some user uploaded a file.')
 
         case 'get':
             # set the filename
@@ -184,23 +199,38 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                     # get the content of the file
                     file_content = file.read()
 
-                    # send the file length
-                    client_socket.send(str(len(file_content)).encode())     
+                # send the file length
+                client_socket.send(str(len(file_content)).encode())     
 
-                    # DEBUG
-                    print(len(file_content))
+                # DEBUG 
+                # print(len(file_content))
 
-                    # for data integrity
-                    time.sleep(0.01)
+                # for data integrity
+                time.sleep(0.01)
 
-                    # DEBUG
-                    print('Type of file_content: ', type(file_content))
+                # DEBUG
+                # print('Type of file_content: ', type(file_content))
 
-                    # DEBUG
-                    # print('file_content: ', file_content)
+                # DEBUG
+                # print('file_content: ', file_content)
 
-                    # send the file to the client
-                    send_file(client_socket, file_content)
+                # send the file to the client
+                send_file(client_socket, file_content)
+
+                # for data integrity
+                time.sleep(0.01)
+
+                response = f'Successfully retrieved {filename}'
+
+                client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+
+                log_message = f"A user retrieved {filename}."
+
+                print(f'Log: {log_message}')
+
+                # broadcast_to_all(client_address, 'Some user retrieved a file.')
+            
+
             
             else:
                 # print error to terminal 
@@ -282,17 +312,11 @@ def handle_client(client_socket, client_address):
                 # get the filename from the client                
                 filename = client_socket.recv(BUFFER_SIZE).decode()
 
-                # get the file size from the client
-                file_size = int(client_socket.recv(BUFFER_SIZE).decode())
-
-                # get the content of the file from the client
-                file_content = recvall(client_socket, file_size)
 
                 # Construct a JSON-like object
                 command_data = {
                     'command': 'store',
                     'filename': filename,
-                    'file_content': file_content  # Assuming file_content is a string
                 }
 
                 # Process the 'store' command with the constructed data
@@ -395,6 +419,31 @@ def send_file(socket, file_content):
 
         # Update file position
         file_position += remaining_bytes
+
+# def broadcast_to_all(current_user_address, message):
+#     """
+#     Broadcast a message to all connected clients except the current user.
+
+#     Parameters:
+#         current_user_address (tuple): The address of the current user in the form of (ip, port).
+#         message (str): The message to be broadcasted.
+
+#     Usage:
+#         broadcast_to_all(('127.0.0.1', 12345), 'Hello, everyone!')
+#     """
+#     print('Curr address: ', current_user_address)
+
+#     for client in connected_clients:
+#         # print(client)
+
+#         if client['address'] != current_user_address:
+#             try:
+#                 # Send the message to the client's socket
+#                 client['socket'].send(message.encode())
+#                 # print(message)
+#                 # print(client['socket'])
+#             except Exception as e:
+#                 print(f"Error broadcasting to {client['address']}: {e}")
         
 # initialize the server socket 
 server_socket = socket(AF_INET, SOCK_STREAM) 
@@ -405,11 +454,12 @@ while True:
     # print to terminal 
     print("FIle Transfer TCP Server")
 
+    # ip = input("Enter IP: ")                  # user inputs IP Address for the server to bind
+    # port = input("Enter Port: ")              # user inputs the Port Number for the server to bind\
+    ip = "127.0.0.1"                            # hard coded for now
+    port = "4000"                               # hard coded for now
+
     try:
-        # ip = input("Enter IP: ")                  # user inputs IP Address for the server to bind
-        # port = input("Enter Port: ")              # user inputs the Port Number for the server to bind\
-        ip = "127.0.0.1"                            # hard coded for now
-        port = "4000"                               # hard coded for now
         server_socket.bind((ip, int(port)))         # Bind the socket to a specific IP address and port
         server_socket.listen(1)                     # sets the maximum ammount of connections allowed 
 

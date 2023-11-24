@@ -3,10 +3,12 @@ from tabulate import tabulate
 import json
 import time
 import os
+import threading
 
 BUFFER_SIZE = 1024          # initialize buffer size
 is_connected = False        # initialize the connection status of the client to False
 is_registered = False       # initialize the registered status of the client fo False
+exit_flag = False
 
 # function to create a new socket
 def create_client_socket():
@@ -27,6 +29,7 @@ def forwardToServer(command_prompt):
     global is_registered        # refer to the global variable 'is_registered'
     global server_address       # refer to the global variable 'server_address'
     global client_socket        # refer to the global variable 'client_socket'
+    global exit_flag            # refer to the global variable 'exit_flag'
     
     # get the commands by separating the string
     inputs =  command_prompt.split()        # use the split() to separate strings
@@ -115,6 +118,8 @@ def forwardToServer(command_prompt):
                         # close the connection
                         client_socket.close()
 
+                        # exit_flag = True
+
                     # print message to terminal 
                     print(f'is_connected is now: {is_connected}')
             else:
@@ -151,6 +156,12 @@ def forwardToServer(command_prompt):
 
                             # set registered status to True
                             is_registered = True
+
+                            # set exit_flag to False
+                            exit_flag = False
+
+                            # Start the receive thread after sending a command
+                            # start_receive_thread()
 
                         else:
                             # set registered status to False
@@ -191,27 +202,38 @@ def forwardToServer(command_prompt):
                                 # assign the content of the file to 'file_content'
                                 file_content = file.read()
 
-                                # Signal the server that the client wants to store a file
-                                client_socket.send(b'store')            
+                            # Signal the server that the client wants to store a file
+                            client_socket.send(b'store')            
 
-                                # pause first before sending again 
-                                time.sleep(0.01)
+                            # pause first before sending again 
+                            time.sleep(0.01)
 
-                                # Send the filename
-                                client_socket.send(params[0].encode()) 
+                            # Send the filename
+                            client_socket.send(params[0].encode()) 
 
-                                # pause first before sending again 
-                                time.sleep(0.01)
+                            # pause first before sending again 
+                            time.sleep(0.01)
 
-                                # Send the file content
-                                print('Length of file: ', len(file_content))
+                            # DEBUG
+                            # Send the file content
+                            # print('Length of file: ', len(file_content))
+
+                            client_socket.send(str(len(file_content)).encode()) 
 
                             # send the file to the server
                             send_file(client_socket, file_content)
 
+                            # get server response
+                            server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+
+                            # set the server response
+                            message = server_response['message']
+
                             # print success message
-                            print(f'{params[0]} successfully sent to the server.')
-                        
+                            print(f'Server: {message}')
+
+                            # exit_flag = True
+
                         else:
                             # print error to terminal 
                             print('Error: File does not exist.')
@@ -253,25 +275,36 @@ def forwardToServer(command_prompt):
                         # receive the file from the server
                         file_content = recvall(client_socket, file_size)
 
-                    # set the filename
-                    filename = params[0]
+                        time.sleep(0.01)
 
-                    # Check if file with same file name already exists in server directory
-                    server_dir = os.listdir("./")
-                    
-                    # get unique filename
-                    filename = get_unique_filename(filename, server_dir)
+                        # get server response
+                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
 
-                    # set filepath
-                    file_path = './' + filename
-
-                    # write a file and assign to 'file'
-                    with open(file_path, 'wb') as file:                      
-                        # write the file_content to the newly created file
-                        file.write(file_content)
+                        message = server_response['message']
 
                         # print success message
-                        print(f'Server successfully stored {filename} to the client directory.')
+                        print(f'Server: {message}')
+
+                        # set the filename
+                        filename = params[0]
+
+                        # Check if file with same file name already exists in server directory
+                        server_dir = os.listdir("./")
+                        
+                        # get unique filename
+                        filename = get_unique_filename(filename, server_dir)
+
+                        message = f'Successfully stored {filename} to the client directory.'
+
+                        print(f'Client: {message}')
+
+                        # set filepath
+                        file_path = './' + filename
+
+                        # write a file and assign to 'file'
+                        with open(file_path, 'wb') as file:                      
+                            # write the file_content to the newly created file
+                            file.write(file_content)
 
                 else:
                     # print error to terminal 
@@ -457,6 +490,31 @@ def get_unique_filename(file_name, server_dir):
     # return the new filename
     return new_file_name
 
+""" def receive_messages():
+    global exit_flag
+
+    while True:
+        if is_registered:  
+            try: 
+                # Receive message from the server
+                server_message = client_socket.recv(BUFFER_SIZE).decode()
+
+                # Process the server message
+                print(f'Server: {server_message}')
+            
+            except Exception as e: 
+                print(f'Error receiving message: {e}')
+                break
+
+        # Check if a user has entered a command
+        if exit_flag:
+            print("Pausing receive_messages for 5 seconds...")
+            time.sleep(5)  # Adjust the sleep duration as needed
+            exit_flag = False  # Reset the exit_flag to continue the loop
+
+def start_receive_thread():
+    receive_thread = threading.Thread(target=receive_messages)
+    receive_thread.start() """
 
 # loops while the client is running to send commands to server until the client is running
 while True: 
@@ -467,5 +525,5 @@ while True:
     # use a function to forward this to the server along with the command
     forwardToServer(command)
 
-# TODO: do broadcasting 
-# while True:
+
+
