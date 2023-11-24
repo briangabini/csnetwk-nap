@@ -1,4 +1,5 @@
 from socket import *
+from tabulate import tabulate
 import json
 import time
 import os
@@ -68,11 +69,15 @@ def forwardToServer(command_prompt):
                             print(f'is_connected is now: {is_connected}')
 
                     except Exception as e:
+                        # print error to terminal 
                         print(f'Connection unsuccessful: {e}')
 
                 else:
+                    # print error to terminal 
                     print('Error: Command parameters do not match or is not allowed.\nType /? for help.')
+
             else:
+                # print error to terminal 
                 print('Client is already connected. Use /leave to disconnect from the server.')
             
         # Disconnect to the server application
@@ -89,29 +94,66 @@ def forwardToServer(command_prompt):
                 else:
                     # send a json object that contains the command of the user 
                     client_socket.send(json.dumps({'command': 'leave'}).encode())
-                    client_socket.close()
-                    is_connected = False
-                    is_registered = False
+
+                    # get a response first before closing the connection
+                    server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+
+                    # assign the message var with the message property of the response
+                    message = server_response['message']
+
+                    # print the message response sent by the server
+                    print(f'Server: {message}')
+
+                    # check if the server sent a status OK
+                    if server_response['status'] == 'OK':
+                        # set the connection status to 'False'
+                        is_connected = False
+
+                        # set the registered status to 'False'
+                        is_registered = False
+
+                        # close the connection
+                        client_socket.close()
+
+                    # print message to terminal 
                     print(f'is_connected is now: {is_connected}')
             else:
+                # print error to terminal
                 print('Error. Please connect to the server first.')
 
         # Register a unique handle or alias
         case '/register':
-            if is_connected:
-                if not is_registered:
-                    if len(params) != 1:
-                        print('Error: Command parameters do not match or is not allowed.\nUsage: /register <handle>')
-                    else:
-                        client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())
-                        #print("sending message") #this is for debugging remove this
-                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode()) # get the response of the server in json format
-                        #print("getting server_response") #this is for debugging remove this
-                        print(server_response['message'])
 
+            # check if the client is connected 
+            if is_connected:
+
+                # check if the user is not registered
+                if not is_registered:
+
+                    # check if the user did not input params 
+                    if len(params) != 1:
+                        # print the error to the terminal 
+                        print('Error: Command parameters do not match or is not allowed.\nUsage: /register <handle>')
+
+                    else:
+
+                        client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())
+
+                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode()) # get the response of the server in json format
+
+                        message = server_response['message']
+
+                        # display server response
+                        print(f'Server: {message}')
+
+                        # check if the server responded with status 'OK'
                         if server_response['status'] == 'OK':
+
+                            # set registered status to True
                             is_registered = True
+
                         else:
+                            # set registered status to False
                             is_registered = False
                 else:
                     # print to terminal
@@ -123,73 +165,120 @@ def forwardToServer(command_prompt):
             
         # Send file to server
         case '/store':
-            if is_connected:
-                if is_registered:
-                    if len(params) != 1:
-                        print('Error: Command parameters do not match or are not allowed.\nUsage: /store <filename>')
-                    else:
-                        file_path = './' + params[0]  # Store file to server folder
 
+            # check if the user is connected 
+            if is_connected:
+
+                # check if the user is registered
+                if is_registered:
+
+                    # check if the user inputted params
+                    if len(params) != 1:
+
+                        # print error to terminal 
+                        print('Error: Command parameters do not match or are not allowed.\nUsage: /store <filename>')
+
+                    else:
+                        # initialize the file path to the file 
+                        file_path = './' + params[0] 
+
+                        # check if the file exists
                         if os.path.exists(file_path):
+                            
+                            # read the file as binary and assign to 'file'
                             with open(file_path, 'rb') as file:
+
+                                # assign the content of the file to 'file_content'
                                 file_content = file.read()
 
-                                client_socket.send(b'store')            # Signal the server that the client wants to store a file
+                                # Signal the server that the client wants to store a file
+                                client_socket.send(b'store')            
 
-                                time.sleep(0.1)
+                                # pause first before sending again 
+                                time.sleep(0.01)
 
-                                client_socket.send(params[0].encode())  # Send the filename
+                                # Send the filename
+                                client_socket.send(params[0].encode()) 
 
-                                time.sleep(0.1)
+                                # pause first before sending again 
+                                time.sleep(0.01)
 
                                 # Send the file content
                                 print('Length of file: ', len(file_content))
 
+                            # send the file to the server
                             send_file(client_socket, file_content)
+
+                            # print success message
                             print(f'{params[0]} successfully sent to the server.')
                         
                         else:
+                            # print error to terminal 
                             print('Error: File does not exist.')
                 else:
+                    # print error to terminal 
                     print('Error: Please register first.')
+
             else:
+                # print error to terminal 
                 print('Error: Please connect to the server first.')
 
         # Fetch a file from a server
         case '/get':
+
+            # check if the user is connected
             if is_connected:
+
+                # check if the user is registered
                 if is_registered:
+
+                    # check if the user inputted params
                     if len(params) != 1:
+                        # print error to terminal 
                         print('Error: Command parameters do not match or are not allowed.\nUsage: /get <filename>')
 
                     else:
-                        client_socket.send(b'get')            # Signal the server that the client wants to get a file
+                        # Signal the server that the client wants to get a file
+                        client_socket.send(b'get')           
 
-                        client_socket.send(params[0].encode())  # Send the filename
+                        # Send the filename
+                        client_socket.send(params[0].encode())  
 
-                        # receive the data
+                        # receive the file size from the server
                         file_size = int(client_socket.recv(BUFFER_SIZE).decode())
 
-                        print(file_size)
+                        # for debugging
+                        # print(file_size)
 
+                        # receive the file from the server
                         file_content = recvall(client_socket, file_size)
 
-                    
+                    # set the filename
                     filename = params[0]
 
-                     # Check if file with same file name already exists in server directory
+                    # Check if file with same file name already exists in server directory
                     server_dir = os.listdir("./")
+                    
+                    # get unique filename
                     filename = get_unique_filename(filename, server_dir)
+
+                    # set filepath
                     file_path = './' + filename
 
-                    with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
+                    # write a file and assign to 'file'
+                    with open(file_path, 'wb') as file:                      
+                        # write the file_content to the newly created file
                         file.write(file_content)
 
+                        # print success message
                         print(f'Server successfully stored {filename} to the client directory.')
+
                 else:
+                    # print error to terminal 
                     print('Error: Please register first.')
 
             else:
+                # print error to terminal 
                 print('Error: Please connect to the server first.')
 
         # Request directory file list from a server
@@ -238,62 +327,134 @@ def forwardToServer(command_prompt):
 
 """ OTHER FUNCTIONS """
 def help_prompt():
-    """ Displays the command help to the command line interface.
+    """ 
+    Display the command help in the command line interface.
+
+    Usage:
+        help_prompt()
     """
 
-    print('COMMAND DESCRIPTION                          INPUT SYNTAX')
-    print('Connect to the server Application            /join <server_ip_add> <port>')
-    print('Disconnect to the server application         /leave')
-    print('Register a unique handle or alias            /register <handle>')
-    print('Send file to server                          /store <filename>')
-    print('Request directory file list from a server    /dir')
-    print('Fetch a file from a server                   /get <filename>')
-    print('Fetch a file from a server                   /get <filename>')
+    commands = [
+        ("/join", "Connect to the server application", "/join <server_ip_add> <port>"),
+        ("/leave", "Disconnect from the server application", "/leave"),
+        ("/register", "Register a unique handle or alias", "/register <handle>"),
+        ("/store", "Send file to server", "/store <filename>"),
+        ("/dir", "Request directory file list from a server", "/dir"),
+        ("/get", "Fetch a file from a server", "/get <filename>")
+    ]
+
+    headers = ["Command", "Description", "Input Syntax"]
+
+    print(tabulate(commands, headers=headers, tablefmt="fancy_grid"))
 
 def recvall(sock, size):
-    """ This method executes the appropriate functions of the server based on the query from client/s
+    """ 
+    Receive a specified amount of data from a socket.
 
-    PARAMETERS
-    ----------
-    sock: socket
-        socket endpoint connected to the client
-    size: int
-        total size of the file being retrieved.
+    Parameters:
+        sock (socket): The socket endpoint connected to the client.
+        size (int): The total size of the data being received.
+
+    Returns:
+        bytes: The received data.
+
+    Raises:
+        Any exceptions raised during socket operations.
+
+    Usage:
+        received_data = recvall(socket_instance, total_data_size)
     """
 
     bytes_read = 0  # Keep track of the number of bytes read
     data = b"" # Stores the data being received
 
     # Loop until there are no more bytes left to read
-        
     while bytes_read < size:
-        packet = sock.recv(BUFFER_SIZE)  # Read data from the sender
-        time.sleep(0.1)
-        data += packet # Store data 
-        bytes_read = len(data)  # Get the number of bytes read so far
+
+        # Read data from the sender
+        packet = sock.recv(BUFFER_SIZE)
+
+        # pause for a moment for data integrity
+        time.sleep(0.01)
+
+        # Store data 
+        data += packet 
+
+        # Get the number of bytes read so far
+        bytes_read = len(data)  
 
     # return 'data' which contains the file data
     return data
 
 def send_file(socket, file_content):
+    """
+    Send the content of a file over a socket in chunks.
+
+    Parameters:
+        socket (socket): The socket over which the file content will be sent.
+        file_content (bytes): The content of the file in bytes.
+
+    Returns:
+        None
+
+    Raises:
+        Any exceptions raised during socket operations.
+
+    Usage:
+        send_file(socket_instance, file_content_bytes)
+    """
+
+    # set file position to 0
     file_position = 0
+
+    # loop until file position is within the length of the file size
     while file_position < len(file_content):
+
+        # assign the remaining bytes 
         remaining_bytes = min(BUFFER_SIZE, len(file_content) - file_position)
+
         # Send a part of data to client
         socket.send(file_content[file_position:file_position + remaining_bytes])
+
+        # for data integrity
         time.sleep(0.01)
+
         # Update file position
         file_position += remaining_bytes
 
 def get_unique_filename(file_name, server_dir):
+    """
+    Generate a unique filename by appending a counter to the base filename
+    if a file with the same name already exists in the specified directory.
+
+    Parameters:
+        file_name (str): The original filename.
+        server_dir (list): A list of existing filenames in the server directory.
+
+    Returns:
+        str: A unique filename.
+
+    Usage:
+        unique_filename = get_unique_filename("example.txt", server_directory_list)
+    """
+
+    # get the base filename, and file ext of the file
     base, ext = os.path.splitext(file_name)
+
+    # set the counter
     counter = 1
+
+    # assign new_file_name with original filename
     new_file_name = file_name
 
+    # loop until successfully finding a unique filename
     while new_file_name in server_dir:
+
+        # set new filename
         new_file_name = f"{base}({counter}){ext}"
         counter += 1
 
+    # return the new filename
     return new_file_name
 
 
@@ -305,3 +466,6 @@ while True:
     
     # use a function to forward this to the server along with the command
     forwardToServer(command)
+
+# TODO: do broadcasting 
+# while True:

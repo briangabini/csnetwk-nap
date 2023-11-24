@@ -5,9 +5,9 @@ import threading
 import json
 
 BUFFER_SIZE = 1024              # initialize buffer size
-#exit_flag = False               # signal the thread to exit
+exit_flag = False               # signal the thread to exit, use for manually exiting the server
 connected_clients = []          # store the connected clients 
-# disconnected_clients = []
+disconnected_clients = []           
 
 def processCommandsFromClients(command_prompt, client_socket, client_address):
     """ This method executes the appropriate functions of the server based on the query from client/s
@@ -44,22 +44,30 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
         case 'leave':
             # Close the socket connected to the client
             print(f'The client {client_address} disconnected.\n')
-            client_socket.close()
 
-            # Print to terminal the disconnection message
-            
-            
-            #print(connected_clients) # for debugging remove this
+            # DEBUG
+            print(connected_clients) 
+
             # Remove the disconnected client from the connected_clients list
             disconnected_client = next((client for client in connected_clients if client['address'] == client_address), None)
+
+            # remove disconnected_client from the list of connected clients
             if disconnected_client:
                 connected_clients.remove(disconnected_client)
 
-            #print(connected_clients) # for debugging remove this
 
-            # Access the global var 'exit_flag' and assign True
+            response = "Closing the connection to the client."
+
+            client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+
+            client_socket.close()
+
             global exit_flag
             exit_flag = True
+
+            # DEBUG
+            # print(connected_clients) 
+            # print(disconnected_client)
 
         # Register the client to the server by appending to the array of connected clients
         case 'register':
@@ -75,7 +83,10 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
                 # print the mesasge 
                 print(f'User {handle} already exists.')
+
+                # set the response
                 response = f'User {handle} already exists. Choose a different handle.'
+
                 client_socket.send(json.dumps({'status': 'NO', 'message': response}).encode())
 
             else:
@@ -100,6 +111,10 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 else:
                     # print the message
                     print(f'User doesn\'t exist.')
+        
+            # DEBUG
+            print(f'connected: {connected_clients}')
+            print(f'disconnected: {disconnected_clients}')
 
         # Send the filenames of files in the server directory to the client
         case 'dir':
@@ -127,81 +142,127 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             client_socket.send(json.dumps({'status': 'OK', 'message': message, 'directory': directory}).encode())
 
         case 'store':
+            # Store file to server folder
             filename = command_prompt['filename']
-                                      # Store file to server folder
 
             # Check if file with same file name already exists in server directory
             server_dir = os.listdir("./")
+
+            # set the filename
             filename = get_unique_filename(filename, server_dir)
 
+            # set the file path
             file_path = './' + filename    
 
+            # print to terminal 
             print('Filename: ', filename)
 
-            file_content = command_prompt['file_content']            # get the content of a file in <bytes>
+            # get the content of a file in <bytes>
+            file_content = command_prompt['file_content']           
 
             # Get the file content
             print(file_content)
 
-            # print('Type of file_content: ', type(file_content))
-
-            with open(file_path, 'wb') as file:                      # write the file_content to the newly created file
+            with open(file_path, 'wb') as file:                      
+                # write the file_content to the newly created file
                 file.write(file_content)
 
             print(f'{client_address} successfully stored {filename} to the server.')
 
         case 'get':
+            # set the filename
             filename = command_prompt['filename']
 
+            # set the file path
             file_path = './' + filename
 
+            # check if the file exists
             if os.path.exists(file_path):
+
+                # read the file as binary and assign to 'file'
                 with open(file_path, 'rb') as file:
+                    # get the content of the file
                     file_content = file.read()
 
-                    client_socket.send(str(len(file_content)).encode())     # send the file length
+                    # send the file length
+                    client_socket.send(str(len(file_content)).encode())     
 
+                    # DEBUG
                     print(len(file_content))
 
-                    time.sleep(0.1)
+                    # for data integrity
+                    time.sleep(0.01)
 
+                    # DEBUG
                     print('Type of file_content: ', type(file_content))
 
+                    # DEBUG
                     # print('file_content: ', file_content)
 
+                    # send the file to the client
                     send_file(client_socket, file_content)
             
             else:
+                # print error to terminal 
                 print('Error: File does not exist.')
 
 def get_unique_filename(file_name, server_dir):
+    """
+    Generate a unique filename by appending a counter to the base filename
+    if a file with the same name already exists in the specified directory.
+
+    Parameters:
+        file_name (str): The original filename.
+        server_dir (list): A list of existing filenames in the server directory.
+
+    Returns:
+        str: A unique filename.
+
+    Usage:
+        unique_filename = get_unique_filename("example.txt", server_directory_list)
+    """
+
+    # get the base filename, and file ext of the file
     base, ext = os.path.splitext(file_name)
+
+    # set the counter
     counter = 1
+
+    # assign new_file_name with original filename
     new_file_name = file_name
 
+    # loop until successfully finding a unique filename
     while new_file_name in server_dir:
+
+        # set new filename
         new_file_name = f"{base}({counter}){ext}"
         counter += 1
 
+    # return the new filename
     return new_file_name
 
 def handle_client(client_socket, client_address):
-    """ This method handles the queries sent by the client
+    """ 
+    Handle queries sent by the client.
 
-    PARAMETERS
-    ----------
-    client_socket: socket
-        socket endpoint connected to the client
-    client_address: _RetAddress
-        address of the client in the form of (ip, port)
+    Parameters:
+        client_socket (socket): The socket endpoint connected to the client.
+        client_address (_RetAddress): The address of the client in the form of (ip, port).
+
+    Global Variable:
+        exit_flag (bool): A global variable indicating whether to exit the client handling loop.
+
+    Usage:
+        handle_client(client_socket_instance, client_address_tuple)
     """
-    global exit_flag        # refer to the global variable 
     # print to terminal 
     print(f"Connection established with {client_address}")
+
+    global exit_flag        
     exit_flag = False
     
 
-    # loop until exit_flag is False
+    # loop until exit_flag is True
     while not exit_flag: 
         try: 
 
@@ -261,34 +322,77 @@ def handle_client(client_socket, client_address):
 
 """ OTHER FUNCTIONS """
 def recvall(sock, size):
-    """ This method executes the appropriate functions of the server based on the query from client/s
+    """ 
+    Receive a specified amount of data from a socket.
 
-    PARAMETERS
-    ----------
-    sock: socket
-        socket endpoint connected to the client
-    size: int
-        total size of the file being retrieved.
+    Parameters:
+        sock (socket): The socket endpoint connected to the client.
+        size (int): The total size of the data being received.
+
+    Returns:
+        bytes: The received data.
+
+    Raises:
+        Any exceptions raised during socket operations.
+
+    Usage:
+        received_data = recvall(socket_instance, total_data_size)
     """
+
     bytes_read = 0  # Keep track of the number of bytes read
     data = b"" # Stores the data being received
 
     # Loop until there are no more bytes left to read
     while bytes_read < size:
-        packet = client_socket.recv(BUFFER_SIZE)  # Read data from the sender
-        time.sleep(0.01)
-        data += packet # Store data 
-        bytes_read = len(data)  # Get the number of bytes read so far
 
+        # Read data from the sender
+        packet = sock.recv(BUFFER_SIZE)
+
+        # pause for a moment for data integrity
+        time.sleep(0.01)
+
+        # Store data 
+        data += packet 
+
+        # Get the number of bytes read so far
+        bytes_read = len(data)  
+
+    # return 'data' which contains the file data
     return data
 
 def send_file(socket, file_content):
+    """
+    Send the content of a file over a socket in chunks.
+
+    Parameters:
+        socket (socket): The socket over which the file content will be sent.
+        file_content (bytes): The content of the file in bytes.
+
+    Returns:
+        None
+
+    Raises:
+        Any exceptions raised during socket operations.
+
+    Usage:
+        send_file(socket_instance, file_content_bytes)
+    """
+
+    # set file position to 0
     file_position = 0
+
+    # loop until file position is within the length of the file size
     while file_position < len(file_content):
+
+        # assign the remaining bytes 
         remaining_bytes = min(BUFFER_SIZE, len(file_content) - file_position)
+
         # Send a part of data to client
         socket.send(file_content[file_position:file_position + remaining_bytes])
+
+        # for data integrity
         time.sleep(0.01)
+
         # Update file position
         file_position += remaining_bytes
         
