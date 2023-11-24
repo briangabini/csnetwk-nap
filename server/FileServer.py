@@ -182,7 +182,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             print(f'Log: {log_message}')
 
-            # broadcast_to_all(client_address, 'Some user uploaded a file.')
+            broadcast_to_all(client_address, 'Some user uploaded a file.')
 
         case 'get':
             # set the filename
@@ -228,7 +228,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
                 print(f'Log: {log_message}')
 
-                # broadcast_to_all(client_address, 'Some user retrieved a file.')
+                broadcast_to_all(client_address, 'Some user retrieved a file.')
             
 
             
@@ -420,30 +420,30 @@ def send_file(socket, file_content):
         # Update file position
         file_position += remaining_bytes
 
-# def broadcast_to_all(current_user_address, message):
-#     """
-#     Broadcast a message to all connected clients except the current user.
+def broadcast_to_all(current_user_address, message):
+    """
+    Broadcast a message to all connected clients except the current user.
 
-#     Parameters:
-#         current_user_address (tuple): The address of the current user in the form of (ip, port).
-#         message (str): The message to be broadcasted.
+    Parameters:
+        current_user_address (tuple): The address of the current user in the form of (ip, port).
+        message (str): The message to be broadcasted.
 
-#     Usage:
-#         broadcast_to_all(('127.0.0.1', 12345), 'Hello, everyone!')
-#     """
-#     print('Curr address: ', current_user_address)
+    Usage:
+        broadcast_to_all(('127.0.0.1', 12345), 'Hello, everyone!')
+    """
+    print('Curr address: ', current_user_address)
 
-#     for client in connected_clients:
-#         # print(client)
+    for client in connected_clients:
+        # print(client)
 
-#         if client['address'] != current_user_address:
-#             try:
-#                 # Send the message to the client's socket
-#                 client['socket'].send(message.encode())
-#                 # print(message)
-#                 # print(client['socket'])
-#             except Exception as e:
-#                 print(f"Error broadcasting to {client['address']}: {e}")
+        if client['address'] != current_user_address:
+            try:
+                # Send the message to the client's socket
+                client['socket'].send(message.encode())
+                # print(message)
+                # print(client['socket'])
+            except Exception as e:
+                print(f"Error broadcasting to {client['address']}: {e}")
         
 # initialize the server socket 
 server_socket = socket(AF_INET, SOCK_STREAM) 

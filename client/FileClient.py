@@ -118,7 +118,7 @@ def forwardToServer(command_prompt):
                         # close the connection
                         client_socket.close()
 
-                        # exit_flag = True
+                        exit_flag = True
 
                     # print message to terminal 
                     print(f'is_connected is now: {is_connected}')
@@ -161,7 +161,7 @@ def forwardToServer(command_prompt):
                             exit_flag = False
 
                             # Start the receive thread after sending a command
-                            # start_receive_thread()
+                            start_receive_thread()
 
                         else:
                             # set registered status to False
@@ -232,7 +232,7 @@ def forwardToServer(command_prompt):
                             # print success message
                             print(f'Server: {message}')
 
-                            # exit_flag = True
+                            exit_flag = True
 
                         else:
                             # print error to terminal 
@@ -490,7 +490,7 @@ def get_unique_filename(file_name, server_dir):
     # return the new filename
     return new_file_name
 
-""" def receive_messages():
+def receive_messages():
     global exit_flag
 
     while True:
@@ -514,7 +514,7 @@ def get_unique_filename(file_name, server_dir):
 
 def start_receive_thread():
     receive_thread = threading.Thread(target=receive_messages)
-    receive_thread.start() """
+    receive_thread.start()
 
 # loops while the client is running to send commands to server until the client is running
 while True: 
