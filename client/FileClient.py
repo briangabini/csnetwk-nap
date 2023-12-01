@@ -269,6 +269,18 @@ def forwardToServer(command_prompt):
                         # receive the file size from the server
                         file_size = int(client_socket.recv(BUFFER_SIZE).decode())
 
+                        # if server sends 0 file size, file does not exist
+                        if file_size == 0:
+                            # get server response
+                            server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+                            message = server_response['message']
+
+                            # print error message
+                            print(f'Server: {message}')
+
+                            # exit function
+                            return
+
                         # for debugging
                         # print(file_size)
 

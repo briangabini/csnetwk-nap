@@ -230,11 +230,16 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
                 # broadcast_to_all(client_address, 'Some user retrieved a file.')
             
-
-            
             else:
                 # print error to terminal 
                 print('Error: File does not exist.')
+
+                # Signal to client that file does not exist
+                client_socket.send(str(0).encode())
+
+                # Send error message to the client
+                response = f'File does not exist'
+                client_socket.send(json.dumps({'status': 'ERROR', 'message': response}).encode())
 
 def get_unique_filename(file_name, server_dir):
     """
