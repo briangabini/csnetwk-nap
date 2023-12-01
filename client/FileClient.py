@@ -275,7 +275,7 @@ def forwardToServer(command_prompt):
                         # receive the file from the server
                         file_content = recvall(client_socket, file_size)
 
-                        time.sleep(0.01)
+                        time.sleep(0.1)
 
                         # get server response
                         server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
@@ -294,10 +294,6 @@ def forwardToServer(command_prompt):
                         # get unique filename
                         filename = get_unique_filename(filename, server_dir)
 
-                        message = f'Successfully stored {filename} to the client directory.'
-
-                        print(f'Client: {message}')
-
                         # set filepath
                         file_path = './' + filename
 
@@ -305,6 +301,10 @@ def forwardToServer(command_prompt):
                         with open(file_path, 'wb') as file:                      
                             # write the file_content to the newly created file
                             file.write(file_content)
+
+                        message = f'Successfully stored {filename} to the client directory.'
+
+                        print(f'Client: {message}')
 
                 else:
                     # print error to terminal 
@@ -405,7 +405,10 @@ def recvall(sock, size):
     while bytes_read < size:
 
         # Read data from the sender
-        packet = sock.recv(BUFFER_SIZE)
+        if (size - bytes_read) < BUFFER_SIZE:
+            packet = sock.recv(size - bytes_read)
+        else:
+            packet = sock.recv(BUFFER_SIZE)
 
         # pause for a moment for data integrity
         time.sleep(0.01)

@@ -149,6 +149,12 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             # Store file to server folder
             filename = command_prompt['filename']
 
+            # get the file size from the client
+            file_size = int(client_socket.recv(BUFFER_SIZE).decode())
+
+            # get the content of the file from the client
+            file_content = recvall(client_socket, file_size)  
+
             # Check if file with same file name already exists in server directory
             server_dir = os.listdir("./")
 
@@ -159,13 +165,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             file_path = './' + filename    
 
             # print to terminal 
-            print('Filename: ', filename)
-
-            # get the file size from the client
-            file_size = int(client_socket.recv(BUFFER_SIZE).decode())
-
-            # get the content of the file from the client
-            file_content = recvall(client_socket, file_size)          
+            print('Filename: ', filename)        
 
             # Get the file content
             # print(file_content)
@@ -370,7 +370,10 @@ def recvall(sock, size):
     while bytes_read < size:
 
         # Read data from the sender
-        packet = sock.recv(BUFFER_SIZE)
+        if (size - bytes_read) < BUFFER_SIZE:
+            packet = sock.recv(size - bytes_read)
+        else:
+            packet = sock.recv(BUFFER_SIZE)
 
         # pause for a moment for data integrity
         time.sleep(0.01)
