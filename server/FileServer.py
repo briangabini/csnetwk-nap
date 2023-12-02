@@ -62,7 +62,17 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             response = "Closing the connection to the client."
 
-            client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+            # Let the client know a response will be sent
+            to_send = json.dumps({'command': 'response', 'message': 'Server: Sending a response'}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
+
+            # Send response to the client
+            to_send = json.dumps({'status': 'OK', 'message': response}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
 
             client_socket.close()
 
@@ -91,7 +101,17 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 # set the response
                 response = f'User {handle} already exists. Choose a different handle.'
 
-                client_socket.send(json.dumps({'status': 'NO', 'message': response}).encode())
+                # Let the client know a response will be sent
+                to_send = json.dumps({'command': 'response', 'message': 'Server: Sending a response'}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
+
+                # Send the response
+                to_send = json.dumps({'status': 'NO', 'message': response}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
 
             else:
                 # get the client from the connected_clients list based on the 'address' property
@@ -108,10 +128,18 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
  
                     # initialize a response 
                     response = f'Successfully registered User {handle}'
+                    
+                    # Let the client know a response will be sent
+                    to_send = json.dumps({'command': 'response', 'message': 'Server: Sending a response'}).encode()
+                    to_send_size = len(to_send)
+                    client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                    client_socket.send(to_send)
 
-                    # send a response to the client by using a json object that contains the status and the message 
-                    client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
-
+                    # Send the response
+                    to_send = json.dumps({'status': 'OK', 'message': response}).encode()
+                    to_send_size = len(to_send)
+                    client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                    client_socket.send(to_send)
                 else:
                     # print the message
                     print(f'User doesn\'t exist.')
@@ -142,8 +170,17 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             # assign the message 
             message = 'Successfully retrieved file list in directory.'
 
-            # send the server reponse in json object notation that contains the status, message, and directory
-            client_socket.send(json.dumps({'status': 'OK', 'message': message, 'directory': directory}).encode())
+            # Let the client know a response will be sent
+            to_send = json.dumps({'command': 'response', 'message': 'Server: Sending a directory'}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
+
+            # Send the response
+            to_send = json.dumps({'status': 'OK', 'message': message, 'directory': directory}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
 
         case 'store':
             # Store file to server folder
@@ -176,13 +213,26 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             response = f'Successfully stored {filename}.'
 
-            client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+            # Let the client know a response will be sent
+            to_send = json.dumps({'command': 'response', 'message': 'Server: Sending a response'}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
+
+            # Send the response
+            to_send = json.dumps({'status': 'OK', 'message': response}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
 
             log_message = f'{client_address} successfully stored {filename} to the server.'
 
             print(f'Log: {log_message}')
 
-            # broadcast_to_all(client_address, 'Some user uploaded a file.')
+            # NOT WORKING WHEN A CLIENT HAS ONGOING PROCESS
+            # Inform all users a file has been uploaded
+            message = json.dumps({'command': 'broadcast', 'message': 'Some user uploaded a file'})
+            broadcast_to_all(client_address, message)
 
         case 'get':
             # set the filename
@@ -190,6 +240,14 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             # set the file path
             file_path = './' + filename
+
+            # Let the client know a file will be sent
+            to_send = json.dumps({'command': 'file', 'message': 'Server: Sending a file'}).encode()
+            to_send_size = len(to_send)
+            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+            client_socket.send(to_send)
+
+            time.sleep(0.1)
 
             # check if the file exists
             if os.path.exists(file_path):
@@ -200,13 +258,13 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                     file_content = file.read()
 
                 # send the file length
-                client_socket.send(str(len(file_content)).encode())     
+                client_socket.send(str(len(file_content)).encode().zfill(BUFFER_SIZE))    
 
                 # DEBUG 
                 # print(len(file_content))
 
                 # for data integrity
-                time.sleep(0.01)
+                time.sleep(0.1)
 
                 # DEBUG
                 # print('Type of file_content: ', type(file_content))
@@ -218,11 +276,15 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 send_file(client_socket, file_content)
 
                 # for data integrity
-                time.sleep(0.01)
+                time.sleep(0.1)
 
                 response = f'Successfully retrieved {filename}'
 
-                client_socket.send(json.dumps({'status': 'OK', 'message': response}).encode())
+                # Send response to server
+                to_send = json.dumps({'status': 'OK', 'message': response}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
 
                 log_message = f"A user retrieved {filename}."
 
@@ -235,12 +297,15 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 print('Error: File does not exist.')
 
                 # Signal to client that file does not exist
-                client_socket.send(str(0).encode())
+                client_socket.send(str(0).encode().zfill(BUFFER_SIZE))
 
                 # Send error message to the client
                 response = f'File does not exist'
-                client_socket.send(json.dumps({'status': 'ERROR', 'message': response}).encode())
-
+                to_send = json.dumps({'status': 'ERROR', 'message': response}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
+                
 def get_unique_filename(file_name, server_dir):
     """
     Generate a unique filename by appending a counter to the base filename
@@ -428,30 +493,40 @@ def send_file(socket, file_content):
         # Update file position
         file_position += remaining_bytes
 
-# def broadcast_to_all(current_user_address, message):
-#     """
-#     Broadcast a message to all connected clients except the current user.
+def broadcast_to_all(current_user_address, message):
+    """
+    Broadcast a message to all connected clients except the current user.
 
-#     Parameters:
-#         current_user_address (tuple): The address of the current user in the form of (ip, port).
-#         message (str): The message to be broadcasted.
+    Parameters:
+        current_user_address (tuple): The address of the current user in the form of (ip, port).
+        message (str): The message to be broadcasted.
 
-#     Usage:
-#         broadcast_to_all(('127.0.0.1', 12345), 'Hello, everyone!')
-#     """
-#     print('Curr address: ', current_user_address)
+    Usage:
+        broadcast_to_all(('127.0.0.1', 12345), 'Hello, everyone!')
+    """
+    print('Curr address: ', current_user_address)
 
-#     for client in connected_clients:
-#         # print(client)
+    for client in connected_clients:
+        # print(client)
 
-#         if client['address'] != current_user_address:
-#             try:
-#                 # Send the message to the client's socket
-#                 client['socket'].send(message.encode())
-#                 # print(message)
-#                 # print(client['socket'])
-#             except Exception as e:
-#                 print(f"Error broadcasting to {client['address']}: {e}")
+        if client['address'] != current_user_address:
+            try:
+                # Let the client know a broadcast will be sent
+                to_send = json.dumps({'command': 'broadcast', 'message': 'Server: Sending a broadcast'}).encode()
+                to_send_size = len(to_send)
+                client['socket'].send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client['socket'].send(to_send)
+
+                # Send the broadcast
+                to_send = json.dumps({'status': 'OK', 'message': message}).encode()
+                to_send_size = len(to_send)
+                client['socket'].send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client['socket'].send(to_send)
+
+                # print(message)
+                # print(client['socket'])
+            except Exception as e:
+                print(f"Error broadcasting to {client['address']}: {e}")
         
 # initialize the server socket 
 server_socket = socket(AF_INET, SOCK_STREAM) 
@@ -460,7 +535,7 @@ server_socket = socket(AF_INET, SOCK_STREAM)
 while True:
 
     # print to terminal 
-    print("FIle Transfer TCP Server")
+    print("File Transfer TCP Server")
 
     # ip = input("Enter IP: ")                  # user inputs IP Address for the server to bind
     # port = input("Enter Port: ")              # user inputs the Port Number for the server to bind\

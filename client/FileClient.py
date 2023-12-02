@@ -30,6 +30,9 @@ def forwardToServer(command_prompt):
     global server_address       # refer to the global variable 'server_address'
     global client_socket        # refer to the global variable 'client_socket'
     global exit_flag            # refer to the global variable 'exit_flag'
+    global server_response      # refer to the global variable 'server_response'
+    global file_size            # refer to the global variable 'file_size '
+    global file_contents        # refer to the global variable 'file_contents'
     
     # get the commands by separating the string
     inputs =  command_prompt.split()        # use the split() to separate strings
@@ -69,8 +72,12 @@ def forwardToServer(command_prompt):
                         if server_response['status'] == 'OK':
                             # assign the 'is_connected' var with True
                             is_connected = True
+
+                            # Display is_connected status
                             print(f'is_connected is now: {is_connected}')
 
+                            # Start the receive thread
+                            start_receive_thread()
                     except Exception as e:
                         # print error to terminal 
                         print(f'Connection unsuccessful: {e}')
@@ -98,16 +105,11 @@ def forwardToServer(command_prompt):
                     # send a json object that contains the command of the user 
                     client_socket.send(json.dumps({'command': 'leave'}).encode())
 
-                    # get a response first before closing the connection
-                    server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+                    # Wait until a response is received from the server
+                    while True:
+                            if server_response != None:
+                                break
 
-                    # assign the message var with the message property of the response
-                    message = server_response['message']
-
-                    # print the message response sent by the server
-                    print(f'Server: {message}')
-
-                    # check if the server sent a status OK
                     if server_response['status'] == 'OK':
                         # set the connection status to 'False'
                         is_connected = False
@@ -118,7 +120,7 @@ def forwardToServer(command_prompt):
                         # close the connection
                         client_socket.close()
 
-                        # exit_flag = True
+                        exit_flag = True
 
                     # print message to terminal 
                     print(f'is_connected is now: {is_connected}')
@@ -141,27 +143,18 @@ def forwardToServer(command_prompt):
                         print('Error: Command parameters do not match or is not allowed.\nUsage: /register <handle>')
 
                     else:
-
-                        client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())
-
-                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode()) # get the response of the server in json format
-
-                        message = server_response['message']
-
-                        # display server response
-                        print(f'Server: {message}')
+                        # Send command to the server
+                        client_socket.send(json.dumps({'command' : 'register', 'handle' : params[0]}).encode())                     
 
                         # check if the server responded with status 'OK'
+                        while True:
+                            if server_response != None:
+                                break
+
                         if server_response['status'] == 'OK':
 
                             # set registered status to True
                             is_registered = True
-
-                            # set exit_flag to False
-                            exit_flag = False
-
-                            # Start the receive thread after sending a command
-                            # start_receive_thread()
 
                         else:
                             # set registered status to False
@@ -173,7 +166,7 @@ def forwardToServer(command_prompt):
             else:
                 # print to terminal
                 print('Error: Please connect to the server first.')
-            
+            print(f'isRegistered: {is_registered}')
         # Send file to server
         case '/store':
 
@@ -203,7 +196,9 @@ def forwardToServer(command_prompt):
                                 file_content = file.read()
 
                             # Signal the server that the client wants to store a file
-                            client_socket.send(b'store')            
+                            client_socket.send(b'store') 
+
+                            print('Uploading file to the server. Please wait...')
 
                             # pause first before sending again 
                             time.sleep(0.01)
@@ -223,16 +218,18 @@ def forwardToServer(command_prompt):
                             # send the file to the server
                             send_file(client_socket, file_content)
 
-                            # get server response
-                            server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+                            time.sleep(0.1)
 
+                            # Wait until the server sends a response
+                            while True:
+                                if server_response != None:
+                                    break
+                            
                             # set the server response
                             message = server_response['message']
 
                             # print success message
                             print(f'Server: {message}')
-
-                            # exit_flag = True
 
                         else:
                             # print error to terminal 
@@ -247,7 +244,6 @@ def forwardToServer(command_prompt):
 
         # Fetch a file from a server
         case '/get':
-
             # check if the user is connected
             if is_connected:
 
@@ -261,18 +257,18 @@ def forwardToServer(command_prompt):
 
                     else:
                         # Signal the server that the client wants to get a file
-                        client_socket.send(b'get')           
+                        client_socket.send(b'get') 
 
                         # Send the filename
                         client_socket.send(params[0].encode())  
 
-                        # receive the file size from the server
-                        file_size = int(client_socket.recv(BUFFER_SIZE).decode())
+                        # Wait until all the data have been received from the server
+                        while True:
+                            if file_size != None and server_response != None and file_contents != None:
+                                break   
 
-                        # if server sends 0 file size, file does not exist
                         if file_size == 0:
-                            # get server response
-                            server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+
                             message = server_response['message']
 
                             # print error message
@@ -280,17 +276,11 @@ def forwardToServer(command_prompt):
 
                             # exit function
                             return
+                        
+                        print('Retrieving file from the server. Please wait...')
 
-                        # for debugging
-                        # print(file_size)
 
-                        # receive the file from the server
-                        file_content = recvall(client_socket, file_size)
-
-                        time.sleep(0.1)
-
-                        # get server response
-                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+                        file_content = file_contents
 
                         message = server_response['message']
 
@@ -312,7 +302,7 @@ def forwardToServer(command_prompt):
                         # write a file and assign to 'file'
                         with open(file_path, 'wb') as file:                      
                             # write the file_content to the newly created file
-                            file.write(file_content)
+                             file.write(file_content)
 
                         message = f'Successfully stored {filename} to the client directory.'
 
@@ -345,12 +335,15 @@ def forwardToServer(command_prompt):
                         # send the command to server via json object
                         client_socket.send(json.dumps({'command' : 'dir'}).encode())
 
-                        # get the response from the server in object notation
-                        server_response = json.loads(client_socket.recv(BUFFER_SIZE).decode())
+                        time.sleep(0.1)
+
+                        # Wait until the server sends a response
+                        while True:
+                            if server_response != None:
+                                break
 
                         directory = server_response['directory']
 
-                        # check if the response status is OK
                         if server_response['status'] == 'OK':
                             print(directory)
 
@@ -369,6 +362,10 @@ def forwardToServer(command_prompt):
         # default command: handles command syntax that doesn't match pre-defined commands
         case _:
             print('Error: Command not found. Type /? for help.')    # might be redundant, test later
+    # Clear global variables used for receiving data
+    server_response = None
+    file_size = None
+    file_contents = None
 
 """ OTHER FUNCTIONS """
 def help_prompt():
@@ -505,40 +502,138 @@ def get_unique_filename(file_name, server_dir):
     # return the new filename
     return new_file_name
 
-""" def receive_messages():
-    global exit_flag
+# Initalize variables used from receiving data to none
+server_response = None
+file_size = None
+file_contents = None
 
-    while True:
-        if is_registered:  
-            try: 
-                # Receive message from the server
-                server_message = client_socket.recv(BUFFER_SIZE).decode()
+# Processes commands received from the server
+def fromServer(command):
+    """
+    Processes commands received from the server.
 
-                # Process the server message
-                print(f'Server: {server_message}')
-            
-            except Exception as e: 
-                print(f'Error receiving message: {e}')
-                break
+    Parameters:
+        command (str): The command received from the server.
 
-        # Check if a user has entered a command
-        if exit_flag:
-            print("Pausing receive_messages for 5 seconds...")
-            time.sleep(5)  # Adjust the sleep duration as needed
-            exit_flag = False  # Reset the exit_flag to continue the loop
+    Global Variables Used:
+        client_socket: The socket connected to the server.
+        file_size (int): Size of the file received from the server.
+        server_response (dict): Response received from the server.
+        file_contents (str): Contents of the file received from the server.
+
+    Usage:
+        fromServer('response')  # Processes 'response' command from the server
+    """
+
+
+    global client_socket        # refer to the global variable 'client_socket'
+    global server_response      # refer to the global variable 'server_response'
+    global file_size            # refer to the global variable 'file_size '
+    global file_contents        # refer to the global variable 'file_contents'
+    
+    # Receive file
+    if command == 'file':
+        # File size
+        file_size = int(client_socket.recv(BUFFER_SIZE).decode())
+        time.sleep(0.1)
+
+        # if server sends 0 file size, file does not exist
+        if file_size == 0:
+            # Receive a json with 'status' and 'message'
+            size = int(client_socket.recv(BUFFER_SIZE).decode())
+            data = json.loads(client_socket.recv(size).decode())
+
+            server_response = data
+            file_contents = "not found"
+
+
+        file_contents = recvall(client_socket, file_size)
+
+        # Receive a json with 'status' and 'message'
+        size = int(client_socket.recv(BUFFER_SIZE).decode())
+        data = json.loads(client_socket.recv(size).decode())
+
+
+        server_response = data
+
+    
+    # Receive a global or error message 
+    elif command == 'response':
+        # Receive a json with 'status' and 'message'
+        size = int(client_socket.recv(BUFFER_SIZE).decode())
+        data = json.loads(client_socket.recv(size).decode())
+
+        server_response = data
+        
+        print(f"{data['message']}\n", end="")
+        time.sleep(0.1)
+
+    elif command == 'broadcast':
+        # Receive a json with 'status' and 'message'
+        size = int(client_socket.recv(BUFFER_SIZE).decode())
+        data = json.loads(client_socket.recv(size).decode())
+
+        server_response = data
+        
+        print(f"System Message: {data['message']}\n>", end="")
+        time.sleep(0.1)
+        
+
+def receive_messages():
+    """
+    Continuously receives and processes messages from the server
+
+    Global Variables Used:
+        exit_flag (bool): Flag to control the loop.
+        client_socket: The socket connected to the server.
+        server_response (dict): Response received from the server.
+        file_size (int): Size of the file received from the server.
+        file_contents (str): Contents of the file received from the server.
+
+    Usage:
+        This function runs in a separate thread to continuously receive and process messages.
+        start_receive_thread() function initiates this thread.
+    """
+    global client_socket        # refer to the global variable 'client_socket'
+    global exit_flag            # refer to the global variable 'exit_flag'
+    global server_response      # refer to the global variable 'server_response'
+    global file_size            # refer to the global variable 'file_size '
+    global file_contents        # refer to the global variable 'file_contents'
+    
+    while not exit_flag:
+        try: 
+            # Receive message from the server
+            size = client_socket.recv(BUFFER_SIZE).decode()
+    
+            size = int(size)
+            data = json.loads(client_socket.recv(size).decode())
+
+            # Receive a json with 'command', 'message'
+            command = data['command']
+
+            fromServer(command)
+        
+        except Exception as e: 
+            print(f'Error receiving message: {e}')
+            break
 
 def start_receive_thread():
+    """
+    Starts a new thread to continuously receive messages from the server.
+
+    Usage:
+        start_receive_thread()  # Initiates a thread for receiving messages
+    """
+
     receive_thread = threading.Thread(target=receive_messages)
-    receive_thread.start() """
+    receive_thread.start()
 
 # loops while the client is running to send commands to server until the client is running
 while True: 
     # Get commands from the user, forwarded to the server
+    time.sleep(0.1)
     command = input("\nInput Command\n> ")
     print()
     
     # use a function to forward this to the server along with the command
     forwardToServer(command)
-
-
-
