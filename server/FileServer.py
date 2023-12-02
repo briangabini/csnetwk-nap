@@ -540,7 +540,7 @@ while True:
     # ip = input("Enter IP: ")                  # user inputs IP Address for the server to bind
     # port = input("Enter Port: ")              # user inputs the Port Number for the server to bind\
     ip = "127.0.0.1"                            # hard coded for now
-    port = "4000"                               # hard coded for now
+    port = "12345"                               # hard coded for now
 
     try:
         server_socket.bind((ip, int(port)))         # Bind the socket to a specific IP address and port

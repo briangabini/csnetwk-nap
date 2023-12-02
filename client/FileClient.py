@@ -4,6 +4,58 @@ import json
 import time
 import os
 import threading
+import tkinter as tk
+from tkinter import messagebox
+
+class MyGUI():
+    def __init__(self):
+
+        self.root = tk.Tk()
+        self.root.geometry('500x500')
+        self.root.title('File Transfer Application')
+
+        self.label = tk.Label(self.root, text="File Transfer Application", font=('Arial', 18))
+        self.label.pack(padx=10, pady=10)
+
+        # Text widget for entering commands
+        self.textbox = tk.Text(self.root, height=1, font=('Arial', 16))
+        self.textbox.pack(padx=10, pady=10)
+
+        self.buttonframe = tk.Frame(self.root)
+        self.buttonframe.pack(padx=10, pady=10)
+
+        self.buttonframe.columnconfigure(0, weight=1)  # Ensure that column 0 expands with the frame
+
+        # Button for submitting the command to the server
+        self.submit_button = tk.Button(self.buttonframe, text="Submit", font=('Arial', 16), command=self.submit_command) 
+        self.submit_button.grid(row=0, column=0, padx=5)  # Place the button in the next column
+
+        self.clearbtn = tk.Button(self.buttonframe, text="Clear", font=('Arial', 16), command=self.clear)
+        # self.clearbtn.pack(padx=10, pady=10)
+        self.clearbtn.grid(row=0, column=1, padx=5)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.mainloop()
+
+    def submit_command(self):
+    # Get the content of the Text widget
+        command = self.textbox.get('1.0', tk.END).strip()
+
+        # Process the entered command
+        forwardToServer(command)
+
+        self.textbox.delete('1.0', tk.END)
+
+    def on_closing(self):
+        if messagebox.askyesno(title="Quit?", message="Do you really want to quit?"):
+            self.root.destroy()
+            forwardToServer('/leave')
+
+    def clear(self):
+        self.textbox.delete('1.0', tk.END)
+
+
+
 
 BUFFER_SIZE = 1024          # initialize buffer size
 is_connected = False        # initialize the connection status of the client to False
@@ -36,6 +88,10 @@ def forwardToServer(command_prompt):
     
     # get the commands by separating the string
     inputs =  command_prompt.split()        # use the split() to separate strings
+    
+    if len(inputs) == 0:
+        return
+
     command = inputs[0]                     # assign the command var with the first string
     params = inputs[1:]                     # assign the params list with the second string onwards
 
@@ -73,8 +129,8 @@ def forwardToServer(command_prompt):
                             # assign the 'is_connected' var with True
                             is_connected = True
 
-                            # Display is_connected status
-                            print(f'is_connected is now: {is_connected}')
+                            # DEBUG: Display is_connected status
+                            # print(f'is_connected is now: {is_connected}')
 
                             # Start the receive thread
                             start_receive_thread()
@@ -122,8 +178,8 @@ def forwardToServer(command_prompt):
 
                         exit_flag = True
 
-                    # print message to terminal 
-                    print(f'is_connected is now: {is_connected}')
+                    # DEBUG: print message to terminal 
+                    # print(f'is_connected is now: {is_connected}')
             else:
                 # print error to terminal
                 print('Error. Please connect to the server first.')
@@ -166,7 +222,10 @@ def forwardToServer(command_prompt):
             else:
                 # print to terminal
                 print('Error: Please connect to the server first.')
-            print(f'isRegistered: {is_registered}')
+
+            # DEBUG
+            # print(f'isRegistered: {is_registered}')
+
         # Send file to server
         case '/store':
 
@@ -629,11 +688,15 @@ def start_receive_thread():
     receive_thread.start()
 
 # loops while the client is running to send commands to server until the client is running
-while True: 
+""" while True: 
     # Get commands from the user, forwarded to the server
-    time.sleep(0.1)
-    command = input("\nInput Command\n> ")
-    print()
+    time.sleep(0.1) 
+    # command = input("\nInput Command\n> ") 
+    command = self.textbox.get('1.0', tk.END).strip()
+
+    print() 
     
     # use a function to forward this to the server along with the command
-    forwardToServer(command)
+    forwardToServer(command) """
+
+MyGUI()
