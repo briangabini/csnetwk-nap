@@ -229,9 +229,18 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             print(f'Log: {log_message}')
 
+            # get the client from the connected_clients list based on the 'address' property
+            filtered_clients = list(filter(lambda client: client['address'] == client_address, connected_clients))
+
+            # access the client's data
+            client = filtered_clients[0]
+
+            # get the client's name 
+            client_name = client['name']
+
             # NOT WORKING WHEN A CLIENT HAS ONGOING PROCESS
             # Inform all users a file has been uploaded
-            message = json.dumps({'command': 'broadcast', 'message': 'Some user uploaded a file'})
+            message = json.dumps(f'{client_name} uploaded a file')
             broadcast_to_all(client_address, message)
 
         case 'get':

@@ -634,7 +634,7 @@ def fromServer(command):
 
         server_response = data
         
-        print(f"System Message: {data['message']}\n>", end="")
+        print(f"Server: {data['message']}\n", end="")
         time.sleep(0.1)
         
 
