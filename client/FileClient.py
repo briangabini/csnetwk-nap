@@ -300,31 +300,41 @@ class FileClient():
                             # Send the filename
                             client_socket.send(params[0].encode())  
 
-                            # Show the progress bar
-                            self.GUI.show_progress_dialog(100, 'Retrieving')
-                            self.GUI.progress_dialog.update()  
+                              
 
                             print('Retrieving file from the server. Please wait...')
                             self.GUI.log('Retrieving file from the server. Please wait...')
 
                             # Wait until all the data have been received from the server
+                            self.GUI.show_progress_dialog(100, 'Retrieving')
+                            self.GUI.progress_dialog.update()
                             while True:
-                                if file_size != None:
+                                if file_size != None and file_size > 0:
+                                     # Show the progress bar
                                      self.GUI.progress_bar['maximum'] = file_size
                                      self.GUI.update_progress(bytes_read)
+
                                 if file_size != None and server_response != None and file_contents != None:
                                     break   
 
-                            if file_size == 0:
-
+                            if file_size == 0:      
+                                self.GUI.close_progress_dialog()                        
                                 message = server_response['message']
+                                
 
                                 # print error message
                                 print(f'Server: {message}')
                                 self.GUI.log(f'Server: {message}')
 
+                                server_response = None
+                                file_size = None
+                                file_contents = None
+
                                 # exit function
                                 return
+                            
+                            
+
 
                             file_content = file_contents
 
@@ -609,12 +619,15 @@ class FileClient():
 
             # if server sends 0 file size, file does not exist
             if file_size == 0:
+                file_contents = b'NOT FOUND'
+
                 # Receive a json with 'status' and 'message'
                 size = int(client_socket.recv(BUFFER_SIZE).decode())
                 data = json.loads(client_socket.recv(size).decode())
 
                 server_response = data
-                file_contents = "not found"
+
+                return
 
 
             file_contents = self.recvall(client_socket, file_size)
@@ -685,6 +698,7 @@ class FileClient():
                 command = data['command']
 
                 self.fromServer(command)
+                command = ''
         
             except Exception as e: 
                 print(f'Error receiving message: {e}')

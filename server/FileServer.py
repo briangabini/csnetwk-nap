@@ -250,16 +250,16 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             # set the file path
             file_path = './' + filename
 
-            # Let the client know a file will be sent
-            to_send = json.dumps({'command': 'file', 'message': 'Server: Sending a file'}).encode()
-            to_send_size = len(to_send)
-            client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
-            client_socket.send(to_send)
-
-            time.sleep(0.1)
-
             # check if the file exists
             if os.path.exists(file_path):
+
+                # Let the client know a file will be sent
+                to_send = json.dumps({'command': 'file', 'message': 'Sending a file'}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
+
+                time.sleep(0.1)
 
                 # read the file as binary and assign to 'file'
                 with open(file_path, 'rb') as file:
@@ -305,6 +305,12 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 # print error to terminal 
                 print('Error: File does not exist.')
 
+                # Let the client know a file will be sent
+                to_send = json.dumps({'command': 'file', 'message': 'Sending a file'}).encode()
+                to_send_size = len(to_send)
+                client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
+                client_socket.send(to_send)
+
                 # Signal to client that file does not exist
                 client_socket.send(str(0).encode().zfill(BUFFER_SIZE))
 
@@ -314,6 +320,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 to_send_size = len(to_send)
                 client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
                 client_socket.send(to_send)
+                print('server done')
                 
 def get_unique_filename(file_name, server_dir):
     """
@@ -563,7 +570,7 @@ while True:
 
     try:
         server_socket.bind((ip, int(port)))         # Bind the socket to a specific IP address and port
-        server_socket.listen(1)                     # sets the maximum ammount of connections allowed 
+        server_socket.listen(5)                     # sets the maximum ammount of connections allowed 
 
         # print to terminal 
         print(f"Server running at {ip}:{port}")     
