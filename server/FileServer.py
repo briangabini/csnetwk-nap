@@ -74,6 +74,8 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
             client_socket.send(to_send)
 
+            time.sleep(1)
+
             client_socket.close()
 
             global exit_flag
@@ -94,7 +96,6 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
 
             # check if the client is already registered
             if filtered_clients:             
-
                 # print the mesasge 
                 print(f'User {handle} already exists.')
 
@@ -320,7 +321,6 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 to_send_size = len(to_send)
                 client_socket.send(str(to_send_size).encode().zfill(BUFFER_SIZE))
                 client_socket.send(to_send)
-                print('server done')
                 
 def get_unique_filename(file_name, server_dir):
     """

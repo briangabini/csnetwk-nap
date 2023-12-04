@@ -217,7 +217,6 @@ class FileClient():
                         else:
                             # initialize the file path to the file 
                             file_path = './' + params[0] 
-
                             # check if the file exists
                             if os.path.exists(file_path):
                                 
@@ -232,7 +231,7 @@ class FileClient():
 
                                 print('Uploading file to the server. Please wait...')
                                 self.GUI.log('Uploading file to the server. Please wait...')
-                                
+
 
                                 # pause first before sending again 
                                 time.sleep(0.01)
@@ -251,7 +250,6 @@ class FileClient():
 
                                 # send the file to the server
                                 self.send_file(client_socket, file_content)
-
                                 time.sleep(0.1)
 
                                 # Wait until the server sends a response
@@ -663,6 +661,9 @@ class FileClient():
             print(f"Server: {data['message']}\n", end="")
             self.GUI.log(f"Server: {data['message']}")
             time.sleep(0.1)
+            server_response = None
+            file_size = None
+            file_contents = None
             
 
     def receive_messages(self):
@@ -685,6 +686,10 @@ class FileClient():
         global server_response      # refer to the global variable 'server_response'
         global file_size            # refer to the global variable 'file_size '
         global file_contents        # refer to the global variable 'file_contents'
+        global BUFFER_SIZE
+        global is_connected
+        global is_registered
+        global bytes_read
         
         while not exit_flag:
             try: 
@@ -694,6 +699,9 @@ class FileClient():
                 size = int(size)
                 data = json.loads(client_socket.recv(size).decode())
 
+                # DEBUG
+                # print(globals())
+
                 # Receive a json with 'command', 'message'
                 command = data['command']
 
@@ -702,6 +710,14 @@ class FileClient():
         
             except Exception as e: 
                 print(f'Error receiving message: {e}')
+
+                BUFFER_SIZE = 1024          
+                is_connected = False       
+                is_registered = False       
+                exit_flag = False           
+                server_response = None      
+                file_size = None            
+                bytes_read = 0              
                 break
 
     def start_receive_thread(self):
@@ -805,7 +821,7 @@ class MyGUI():
         
         # Sroll to the end of the text area
         self.log_area.see(tk.END)
-
+1
     def show_progress_dialog(self, max_value, title):
         # Create a dialog
         self.progress_dialog = tk.Toplevel(self.root)
