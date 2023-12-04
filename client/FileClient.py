@@ -812,7 +812,7 @@ class MyGUI():
         self.progress_dialog.transient(self.root)
 
         # Display information about the upload including filename and percentage
-        upload_info_label = tk.Label(self.progress_dialog, text=f"{title}. Please wait...", font=('Arial', 12))
+        upload_info_label = tk.Label(self.progress_dialog, text=f"{title}. Please wait...\n({BUFFER_SIZE} Bps)", font=('Arial', 12))
         upload_info_label.pack(padx=10, pady=5)
 
         self.percentage_label = tk.Label(self.progress_dialog, text="0%", font=('Arial', 12))
