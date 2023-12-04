@@ -729,6 +729,9 @@ class MyGUI():
         self.textbox = tk.Text(self.root, height=1, font=('Arial', 16), wrap=tk.NONE)
         self.textbox.pack(padx=10, pady=10)
 
+        # Submit when 'enter' is pressed
+        self.textbox.bind("<Return>", self.submit_on_enter)
+
         self.buttonframe = tk.Frame(self.root)
         self.buttonframe.pack(padx=10, pady=10)
 
@@ -761,6 +764,11 @@ class MyGUI():
         self.FILE_CLIENT.forwardToServer(command)
 
         self.textbox.delete('1.0', tk.END)
+
+    def submit_on_enter(self, event):
+        # Check if the text box is focused
+        if str(self.root.focus_get()) == str(self.textbox):
+            self.submit_command()
 
     def on_closing(self):
         if messagebox.askyesno(title="Quit?", message="Do you really want to quit?"):
