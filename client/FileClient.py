@@ -60,7 +60,6 @@ class FileClient():
 
             # Connect to the server application
             case '/join':
-                
                 # check first if the client is already connected to the server
                 if not is_connected:    
 
@@ -69,6 +68,8 @@ class FileClient():
                         server_address = (params[0], int(params[1]))        # assign the address with the params 
 
                         try: 
+                            exit_flag = False
+
                             # create a new client every time 
                             client_socket = self.create_client_socket()          
 

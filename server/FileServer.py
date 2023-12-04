@@ -50,7 +50,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
             print(f'The client {client_address} disconnected.\n')
 
             # DEBUG
-            print(connected_clients) 
+            # print(connected_clients) 
 
             # Remove the disconnected client from the connected_clients list
             disconnected_client = next((client for client in connected_clients if client['address'] == client_address), None)
@@ -421,6 +421,16 @@ def handle_client(client_socket, client_address):
 
         except Exception as e:
             print(f'Error handling client. {e}')
+
+            # Remove the disconnected client from the connected_clients list
+            disconnected_client = next((client for client in connected_clients if client['address'] == client_address), None)
+
+            # remove disconnected_client from the list of connected clients
+            if disconnected_client:
+                connected_clients.remove(disconnected_client)
+
+            client_socket.close()
+
             break
 
 """ OTHER FUNCTIONS """
