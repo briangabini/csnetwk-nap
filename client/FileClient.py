@@ -821,7 +821,7 @@ class MyGUI():
         
         # Sroll to the end of the text area
         self.log_area.see(tk.END)
-1
+
     def show_progress_dialog(self, max_value, title):
         # Create a dialog
         self.progress_dialog = tk.Toplevel(self.root)
