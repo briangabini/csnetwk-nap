@@ -263,7 +263,6 @@ class FileClient():
 
                                 # print success message
                                 print(f'Server: {message}')
-                                self.GUI.log(f'Server: {message}')
 
                             else:
                                 # print error to terminal 
@@ -353,8 +352,6 @@ class FileClient():
 
                             self.GUI.close_progress_dialog()
                             message = f'Successfully stored {filename} to the client directory.'
-
-                            print(f'Client: {message}')
 
                     else:
                         # print error to terminal 
@@ -627,6 +624,7 @@ class FileClient():
 
 
             server_response = data
+            
 
         
         # Receive a global or error message 
@@ -637,8 +635,8 @@ class FileClient():
 
             server_response = data
             
-            print(f"{data['message']}\n", end="")
-            self.GUI.log(f"{data['message']}")
+            print(f"Server: {data['message']}\n", end="")
+            self.GUI.log(f"Server: {data['message']}")
             time.sleep(0.1)
 
         elif command == 'broadcast':
@@ -649,7 +647,7 @@ class FileClient():
             server_response = data
             
             print(f"Server: {data['message']}\n", end="")
-            self.GUI.log(f"{data['message']}")
+            self.GUI.log(f"Server: {data['message']}")
             time.sleep(0.1)
             
 
@@ -795,6 +793,14 @@ class MyGUI():
         self.progress_dialog.grab_set()
         self.root.attributes('-disabled', True)
         self.progress_dialog.attributes('-disabled', True)
+
+        # Position the progress dialog relative to the root window
+        x = self.root.winfo_x() + self.root.winfo_width() // 2 - 100
+        y = self.root.winfo_y() + self.root.winfo_height() // 2 - 50
+        self.progress_dialog.geometry(f'+{x}+{y}')
+
+        # Place progress dialog on top of main window
+        self.progress_dialog.transient(self.root)
 
         # Display information about the upload including filename and percentage
         upload_info_label = tk.Label(self.progress_dialog, text=f"{title}. Please wait...", font=('Arial', 12))

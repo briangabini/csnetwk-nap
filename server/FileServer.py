@@ -287,7 +287,7 @@ def processCommandsFromClients(command_prompt, client_socket, client_address):
                 # for data integrity
                 time.sleep(0.1)
 
-                response = f'Successfully retrieved {filename}'
+                response = f'Successfully stored {filename} to the client directory.'
 
                 # Send response to server
                 to_send = json.dumps({'status': 'OK', 'message': response}).encode()
